@@ -1,0 +1,99 @@
+{
+  "common": {
+    "appName": "CarMarket"
+  },
+  "navbar": {
+    "buy": "Comprar",
+    "allCars": "Todos los Autos",
+    "browseCarsDescription": "Explore nuestro inventario completo de autos usados de calidad",
+    "sedans": "Sedanes",
+    "sedansDescription": "Autos cómodos y eficientes para conducción diaria",
+    "suvs": "SUVs",
+    "suvsDescription": "Vehículos espaciosos con mayor capacidad de carga",
+    "hatchbacks": "Hatchbacks",
+    "hatchbacksDescription": "Autos compactos y versátiles con acceso por puerta trasera",
+    "sell": "Vender",
+    "financing": "Financiación",
+    "aboutUs": "Nosotros",
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "buyCars": "Comprar Autos",
+    "sellYourCar": "Vende tu Auto"
+  },
+  "homePage": {
+    "hero": {
+      "title": "Encuentra tu auto perfecto",
+      "subtitle": "Explore nuestra selección de autos usados con condición garantizada",
+      "searchPlaceholder": "Buscar por marca, modelo o características",
+      "searchButton": "Buscar Autos"
+    },
+    "cta": {
+      "title": "¿Listo para encontrar el auto de tus sueños?",
+      "subtitle": "Explore nuestro amplio inventario de autos usados certificados con informes detallados de historial y calidad garantizada.",
+      "browseAllCars": "Ver Todos los Autos",
+      "sellYourCar": "Vende tu Auto"
+    }
+  },
+  "featuredCars": {
+    "title": "Autos Destacados",
+    "allCars": "Todos los Autos",
+    "sedans": "Sedanes",
+    "suvs": "SUVs",
+    "hatchbacks": "Hatchbacks",
+    "viewDetails": "Ver Detalles",
+    "viewAllCars": "Ver Todos los Autos"
+  },
+  "howItWorks": {
+    "title": "Cómo Funciona",
+    "steps": {
+      "browseSelect": {
+        "title": "Explorar y Seleccionar",
+        "description": "Explore nuestro extenso inventario de vehículos pre-propiedad certificados con información detallada."
+      },
+      "qualityGuarantee": {
+        "title": "Garantía de Calidad",
+        "description": "Todos nuestros vehículos se someten a una rigurosa inspección de 150 puntos para garantizar la calidad y confiabilidad."
+      },
+      "flexibleFinancing": {
+        "title": "Financiación Flexible",
+        "description": "Elija entre varias opciones de pago, incluida la financiación a través de nuestros socios de confianza."
+      },
+      "securePurchase": {
+        "title": "Compra Segura",
+        "description": "Complete su compra en línea o en persona con nuestro proceso de transacción seguro."
+      }
+    }
+  },
+  "carCategories": {
+    "title": "Explorar por Categoría",
+    "categories": {
+      "sedans": "Sedanes",
+      "suvs": "SUVs",
+      "hatchbacks": "Hatchbacks",
+      "trucks": "Camionetas"
+    },
+    "cars": "autos"
+  },
+  "footer": {
+    "description": "Su mercado de confianza para comprar y vender autos usados de calidad.",
+    "quickLinks": "Enlaces Rápidos",
+    "browseCars": "Explorar Autos",
+    "sellYourCar": "Vende tu Auto",
+    "financingOptions": "Opciones de Financiación",
+    "aboutUs": "Nosotros",
+    "support": "Soporte",
+    "contactUs": "Contáctenos",
+    "faq": "Preguntas Frecuentes",
+    "termsOfService": "Términos de Servicio",
+    "privacyPolicy": "Política de Privacidad",
+    "cookies": "Cookies",
+    "contact": "Contacto",
+    "address": {
+      "street": "123 Auto Plaza",
+      "city": "Ciudad de México, MX 12345",
+      "email": "Email: info@carmarket.com",
+      "phone": "Teléfono: (555) 123-4567"
+    },
+    "copyright": "Todos los derechos reservados."
+  }
+} 
