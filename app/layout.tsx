@@ -21,11 +21,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={inter.className} style={{ maxWidth: '95vw', margin: 'auto' }}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <TranslationProvider>
             <Navbar />
-            <main className="flex justify-center min-h-screen mt-16">{children}</main>
+            <main className="flex justify-center min-h-screen mt-16 max-w-7xl mx-auto" style={{ maxWidth: '95vw', margin: 'auto' }}>{children}</main>
             <Footer />
           </TranslationProvider>
         </ThemeProvider>

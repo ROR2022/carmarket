@@ -1,0 +1,119 @@
+{
+  "common": {
+    "appName": "CarMarket"
+  },
+  "navbar": {
+    "buy": "Buy",
+    "allCars": "All Cars",
+    "browseCarsDescription": "Browse our complete inventory of quality used cars",
+    "sedans": "Sedans",
+    "sedansDescription": "Comfortable and efficient cars for daily driving",
+    "suvs": "SUVs",
+    "suvsDescription": "Spacious vehicles with greater cargo capacity",
+    "hatchbacks": "Hatchbacks",
+    "hatchbacksDescription": "Compact and versatile cars with rear door access",
+    "sell": "Sell",
+    "financing": "Financing",
+    "aboutUs": "About Us",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "buyCars": "Buy Cars",
+    "sellYourCar": "Sell Your Car"
+  },
+  "homePage": {
+    "hero": {
+      "title": "Find your perfect car",
+      "subtitle": "Explore our selection of used cars with guaranteed condition",
+      "searchPlaceholder": "Search by brand, model or features",
+      "searchButton": "Search Cars"
+    },
+    "cta": {
+      "title": "Ready to find the car of your dreams?",
+      "subtitle": "Explore our wide inventory of certified used cars with detailed history reports and guaranteed quality.",
+      "browseAllCars": "Browse All Cars",
+      "sellYourCar": "Sell Your Car"
+    }
+  },
+  "featuredCars": {
+    "title": "Featured Cars",
+    "allCars": "All Cars",
+    "sedans": "Sedans",
+    "suvs": "SUVs",
+    "hatchbacks": "Hatchbacks",
+    "viewDetails": "View Details",
+    "viewAllCars": "View All Cars"
+  },
+  "about": {
+    "badge": "About Us",
+    "title": "Your Trusted Car Marketplace",
+    "subtitle": "We are dedicated to providing the best car buying and selling experience for our users.",
+    "mission": {
+      "title": "Our Mission",
+      "description": "We aim to simplify the car buying process and provide transparent information for all users.",
+      "features": {
+        "performance": {
+          "title": "High Performance",
+          "description": "Fast and responsive application for optimized user experience"
+        },
+        "security": {
+          "title": "Maximum Security",
+          "description": "Advanced encryption and secure payment processing"
+        }
+      }
+    },
+    "tech": {
+      "title": "Our Technology"
+    }
+  },
+  "cookies": {
+    "title": "Cookie Policy",
+    "subtitle": "Information about how we use cookies on our website",
+    "whatAreCookies": {
+      "title": "What are cookies?",
+      "subtitle": "Learn about cookies and how they work",
+      "description": "Cookies are small text files stored on your device that help us provide you with a better browsing experience."
+    },
+    "types": {
+      "title": "Types of cookies",
+      "subtitle": "Different types of cookies we use"
+    }
+  },
+  "types": {
+    "essential": {
+      "title": "Essential Cookies",
+      "description": "Required for the website to function properly",
+      "required": true
+    },
+    "analytics": {
+      "title": "Analytics Cookies",
+      "description": "Help us understand how visitors interact with our website",
+      "required": false
+    },
+    "functional": {
+      "title": "Functional Cookies",
+      "description": "Enable enhanced functionality and personalization",
+      "required": false
+    },
+    "marketing": {
+      "title": "Marketing Cookies",
+      "description": "Track your activity to deliver targeted advertisements",
+      "required": false
+    }
+  },
+  "usage": {
+    "items": {
+      "improve": "Improve user experience",
+      "analyze": "Analyze website usage",
+      "personalize": "Personalize content",
+      "remember": "Remember your preferences"
+    }
+  },
+  "management": {
+    "options": {
+      "browser": "In your browser",
+      "preferences": "In your browser preferences",
+      "thirdParty": "In third parties"
+    }
+  }
+} 

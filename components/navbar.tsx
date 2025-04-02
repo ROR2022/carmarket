@@ -12,16 +12,18 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
-import { Menu, X } from "lucide-react"
+import { Menu, X, LogOut } from "lucide-react"
 import { useTranslation } from "@/utils/translation-context"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { useAuth } from "@/utils/auth-hooks"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { t } = useTranslation()
+  const { isAuthenticated, signOut, loading } = useAuth()
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
@@ -31,13 +33,13 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
+          <div className="hidden md:flex items-center space-x-1 relative z-20">
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
                   <NavigationMenuTrigger>{t("navbar.buy")}</NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid gap-3 p-4 w-[400px] md:w-[500px] lg:w-[600px] grid-cols-2">
+                    <ul className="grid gap-3 p-4 w-[400px] md:w-[500px] lg:w-[600px] grid-cols-2 relative z-50">
                       <li>
                         <NavigationMenuLink asChild>
                           <Link
@@ -109,18 +111,31 @@ export default function Navbar() {
           
 
           <div className="hidden md:flex items-center space-x-4">
-          <ThemeSwitcher />
-            <Button variant="ghost" asChild>
-              <Link href="/sign-in">{t("navbar.login")}</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/sign-up">{t("navbar.register")}</Link>
-            </Button>
+            <ThemeSwitcher />
+            {!loading && (
+              <>
+                {isAuthenticated ? (
+                  <Button variant="outline" onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {t("navbar.logout")}
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="ghost" asChild>
+                      <Link href="/sign-in">{t("navbar.login")}</Link>
+                    </Button>
+                    <Button asChild>
+                      <Link href="/sign-up">{t("navbar.register")}</Link>
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden">
-          <ThemeSwitcher />
+            <ThemeSwitcher />
             <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
               {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </Button>
@@ -142,16 +157,29 @@ export default function Navbar() {
               {t("navbar.aboutUs")}
             </Link>
             <div className="pt-4 flex flex-col space-y-2">
-              <Button variant="outline" asChild className="w-full">
-                <Link href="/sign-in" onClick={() => setIsMenuOpen(false)}>
-                  {t("navbar.login")}
-                </Link>
-              </Button>
-              <Button asChild className="w-full">
-                <Link href="/sign-up" onClick={() => setIsMenuOpen(false)}>
-                  {t("navbar.register")}
-                </Link>
-              </Button>
+              {!loading && (
+                <>
+                  {isAuthenticated ? (
+                    <Button variant="outline" className="w-full" onClick={() => { signOut(); setIsMenuOpen(false); }}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      {t("navbar.logout")}
+                    </Button>
+                  ) : (
+                    <>
+                      <Button variant="outline" asChild className="w-full">
+                        <Link href="/sign-in" onClick={() => setIsMenuOpen(false)}>
+                          {t("navbar.login")}
+                        </Link>
+                      </Button>
+                      <Button asChild className="w-full">
+                        <Link href="/sign-up" onClick={() => setIsMenuOpen(false)}>
+                          {t("navbar.register")}
+                        </Link>
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </nav>
         </div>

@@ -5,7 +5,15 @@ const mercadopago = new MercadoPagoConfig({
   accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!,
 })
 
-export async function createPaymentPreference(items: any[], buyerEmail: string) {
+// Definir interfaz para los items
+interface PaymentItem {
+  id: string;
+  title: string;
+  price: number;
+  [key: string]: unknown;
+}
+
+export async function createPaymentPreference(items: PaymentItem[], buyerEmail: string) {
   try {
     const preference = new Preference(mercadopago)
 
