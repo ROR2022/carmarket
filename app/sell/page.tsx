@@ -47,6 +47,7 @@ export default function SellPage() {
                     src="/images/cars/valuation.jpeg"
                     alt="Car valuation"
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover"
                   />
                 </div>
@@ -75,6 +76,7 @@ export default function SellPage() {
                     src="/images/cars/listing.jpeg"
                     alt="Create listing"
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover"
                   />
                 </div>

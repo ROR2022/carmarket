@@ -44,6 +44,7 @@ export function CarCard({ car, isFavorite = false, onToggleFavorite }: CarCardPr
               src={car.images[0] || '/images/placeholder-car.png'}
               alt={car.title}
               fill
+              priority
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover transition-transform duration-300 ease-in-out"
               style={{ transform: isHovered ? 'scale(1.05)' : 'scale(1)' }}

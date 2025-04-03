@@ -5,7 +5,8 @@
     "loading_details": "Cargando detalles del vehículo...",
     "error": "Error",
     "back_to_list": "Volver a la lista",
-    "browse_all": "Explorar todos los autos"
+    "browse_all": "Explorar todos los autos",
+    "back_to_all_cars": "Volver a todos los autos"
   },
   "navbar": {
     "buy": "Comprar",
@@ -125,6 +126,7 @@
       "of": "de"
     },
     "noResults": "No se encontraron vehículos que coincidan con tu búsqueda",
+    "noCarsInCategory": "No hay vehículos en esta categoría",
     "loading": "Cargando vehículos...",
     "error": "Error al cargar los vehículos. Por favor, intenta de nuevo.",
     "not_found": "Vehículo no encontrado",
@@ -153,12 +155,19 @@
   "categories": {
     "sedan": "Sedán",
     "suv": "SUV",
+    "suv_description": "Vehículos espaciosos con mayor capacidad de carga",
     "hatchback": "Hatchback",
+    "hatchback_description": "Autos compactos y versátiles con acceso por puerta trasera",
     "pickup": "Pickup",
+    "pickup_description": "Vehículos utilitarios con capacidad de carga y versatilidad",
     "coupe": "Coupé",
+    "coupe_description": "Autos deportivos con diseño aerodinámico y rendimiento excepcional",
     "van": "Van",
+    "van_description": "Vehículos utilitarios con capacidad de carga y versatilidad",
     "convertible": "Convertible",
-    "wagon": "Familiar"
+    "convertible_description": "Autos deportivos con techo rígido o plegable",
+    "wagon": "Familiar",
+    "wagon_description": "Autos familiares con capacidad de carga y versatilidad"
   },
   "howItWorks": {
     "title": "Cómo Funciona",
@@ -796,6 +805,19 @@
         "cancelButton": "Cancelar",
         "confirmButton": "Sí, eliminar"
       }
+    }
+  },
+  "admin": {
+    "title": "Panel de administración",
+    "pageSubtitle": "Gestiona tu sitio web y administra usuarios",
+    "stats": {
+      "totalListings": "Total de anuncios",
+      "pendingListings": "Anuncios pendientes",
+      "approvedListings": "Anuncios aprobados",
+      "rejectedListings": "Anuncios rechazados",
+      "changesRequestedListings": "Anuncios con cambios solicitados",
+      "totalUsers": "Total de usuarios",
+      "newListingsToday": "Nuevos anuncios hoy"
     }
   }
 } 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -36,65 +36,8 @@ import { useAuth } from '@/utils/auth-hooks';
 import { CarListing, ListingStatus } from '@/types/listing';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-// Datos de prueba para simular anuncios del usuario
-const generateMockListings = (count: number, status: ListingStatus): CarListing[] => {
-  const statusDate = new Date();
-  
-  // Ajustamos la fecha según el estado
-  if (status === 'expired') {
-    statusDate.setDate(statusDate.getDate() - 30);
-  } else if (status === 'sold') {
-    statusDate.setDate(statusDate.getDate() - 15);
-  } else if (status === 'pending') {
-    statusDate.setDate(statusDate.getDate() - 2);
-  }
-  
-  const expiryDate = new Date(statusDate);
-  expiryDate.setDate(expiryDate.getDate() + 30);
-  
-  return Array.from({ length: count }, (_, i) => ({
-    id: `list-${status}-${i + 1}`,
-    title: `Toyota Corolla ${2018 + i % 4}`,
-    brand: 'Toyota',
-    model: 'Corolla',
-    year: 2018 + i % 4,
-    category: i % 2 === 0 ? 'sedan' : 'hatchback',
-    price: 250000 + (i * 15000),
-    mileage: 45000 + (i * 5000),
-    fuelType: 'gasoline',
-    transmission: 'automatic',
-    features: ['Air Conditioning', 'Power Windows', 'Central Locking'],
-    description: 'Vehículo en excelente estado, único dueño, todas las facturas de servicio.',
-    location: 'Ciudad de México',
-    images: [
-      i % 2 === 0 
-        ? '/images/cars/sedan.jpeg' 
-        : '/images/cars/hatchback.jpeg'
-    ],
-    sellerId: 'user-1',
-    sellerName: 'Juan Pérez',
-    sellerEmail: 'juan@example.com',
-    sellerPhone: '5551234567',
-    status,
-    viewCount: Math.floor(Math.random() * 200) + 20,
-    contactCount: Math.floor(Math.random() * 20),
-    isFeatured: i % 5 === 0,
-    createdAt: statusDate.toISOString(),
-    updatedAt: statusDate.toISOString(),
-    expiresAt: expiryDate.toISOString(),
-  }));
-};
-
-// Crear datos de muestra
-const MOCK_LISTINGS = {
-  active: generateMockListings(5, 'active'),
-  pending: generateMockListings(2, 'pending'),
-  sold: generateMockListings(3, 'sold'),
-  expired: generateMockListings(2, 'expired'),
-  draft: generateMockListings(1, 'draft'),
-  rejected: generateMockListings(1, 'rejected'),
-};
+import { toast } from '@/components/ui/use-toast';
+import { ListingService } from '@/services/listings';
 
 // Formatear fecha relativa
 const formatRelativeDate = (dateString: string) => {
@@ -112,21 +55,57 @@ const formatCurrency = (value: number): string => {
 
 export default function MyListingsPage() {
   const { t } = useTranslation();
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const [listings, setListings] = useState(MOCK_LISTINGS);
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const [listings, setListings] = useState<Record<ListingStatus, CarListing[]>>({
+    active: [],
+    pending: [],
+    sold: [],
+    expired: [],
+    draft: [],
+    rejected: [],
+    approved: [],
+    changes_requested: []
+  });
+  const [loading, setLoading] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
 
-  // Simular eliminación de un anuncio
-  const handleDeleteListing = () => {
-    if (selectedListingId) {
-      // En una aplicación real, aquí llamaríamos a la API
+  // Cargar anuncios del usuario
+  useEffect(() => {
+    const loadUserListings = async () => {
+      if (isAuthenticated && user && !authLoading) {
+        try {
+          setLoading(true);
+          const userListings = await ListingService.getUserListings(user.id);
+          setListings(userListings);
+        } catch (error) {
+          console.error('Error cargando anuncios:', error);
+          toast({
+            title: 'Error',
+            description: 'No se pudieron cargar tus anuncios. Por favor, intenta de nuevo.',
+            variant: 'destructive'
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
 
-      // Actualizar el estado local eliminando el anuncio
+    loadUserListings();
+  }, [isAuthenticated, user, authLoading]);
+
+  // Eliminar un anuncio
+  const handleDeleteListing = async () => {
+    if (!selectedListingId || !user) return;
+    
+    try {
+      await ListingService.deleteListing(selectedListingId, user.id);
+      
+      // Actualizar el estado local
       const updatedListings = { ...listings };
       const listingStatus = Object.keys(updatedListings).find((status) => 
-        (updatedListings as Record<string, CarListing[]>)[status].some(listing => listing.id === selectedListingId)
-      ) as keyof typeof updatedListings;
+        updatedListings[status as ListingStatus].some(listing => listing.id === selectedListingId)
+      ) as ListingStatus;
       
       if (listingStatus) {
         updatedListings[listingStatus] = updatedListings[listingStatus].filter(
@@ -135,112 +114,138 @@ export default function MyListingsPage() {
         setListings(updatedListings);
       }
       
-      // Cerrar el diálogo de confirmación
+      toast({
+        title: 'Anuncio eliminado',
+        description: 'El anuncio ha sido eliminado correctamente'
+      });
+    } catch (error) {
+      console.error('Error eliminando anuncio:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar el anuncio. Por favor, intenta de nuevo.',
+        variant: 'destructive'
+      });
+    } finally {
       setDeleteConfirmOpen(false);
       setSelectedListingId(null);
     }
   };
 
   // Cambiar estado de un anuncio
-  const handleStatusChange = (listingId: string, newStatus: ListingStatus) => {
-    // En una aplicación real, aquí llamaríamos a la API
+  const handleStatusChange = async (listingId: string, newStatus: ListingStatus) => {
+    if (!user) return;
     
-    // Encontrar el anuncio y su estado actual
-    let currentStatus: keyof typeof listings | undefined;
-    let targetListing: CarListing | undefined;
-    
-    Object.entries(listings).forEach(([status, statusListings]) => {
-      const found = statusListings.find(listing => listing.id === listingId);
-      if (found) {
-        currentStatus = status as keyof typeof listings;
-        targetListing = found;
+    try {
+      // Llamar al servicio para cambiar el estado
+      await ListingService.changeListingStatus(listingId, newStatus, user.id);
+      
+      // Encontrar el anuncio y su estado actual
+      let currentStatus: ListingStatus | undefined;
+      let targetListing: CarListing | undefined;
+      
+      Object.entries(listings).forEach(([status, statusListings]) => {
+        const found = statusListings.find(listing => listing.id === listingId);
+        if (found) {
+          currentStatus = status as ListingStatus;
+          targetListing = found;
+        }
+      });
+      
+      if (currentStatus && targetListing) {
+        // Crear copia del estado actual
+        const updatedListings = { ...listings };
+        
+        // Eliminar el anuncio de su estado actual
+        updatedListings[currentStatus] = updatedListings[currentStatus].filter(
+          listing => listing.id !== listingId
+        );
+        
+        // Añadir el anuncio al nuevo estado
+        const updatedListing = { 
+          ...targetListing, 
+          status: newStatus,
+          updatedAt: new Date().toISOString() 
+        };
+        
+        // Añadir al nuevo estado
+        updatedListings[newStatus] = [...updatedListings[newStatus], updatedListing];
+        
+        // Actualizar estado
+        setListings(updatedListings);
+        
+        toast({
+          title: 'Estado actualizado',
+          description: `El anuncio ahora está ${newStatus === 'sold' ? 'marcado como vendido' : 'en estado ' + newStatus}`
+        });
       }
-    });
-    
-    if (currentStatus && targetListing) {
-      // Crear copia del estado actual
-      const updatedListings = { ...listings };
-      
-      // Eliminar el anuncio de su estado actual
-      updatedListings[currentStatus] = updatedListings[currentStatus].filter(
-        listing => listing.id !== listingId
-      );
-      
-      // Añadir el anuncio al nuevo estado
-      const updatedListing = { 
-        ...targetListing, 
-        status: newStatus,
-        updatedAt: new Date().toISOString() 
-      };
-      
-      // Si es vendido, actualizamos la fecha
-      if (newStatus === 'sold') {
-        updatedListing.updatedAt = new Date().toISOString();
-      }
-      
-      // Añadir al nuevo estado
-      updatedListings[newStatus] = [...updatedListings[newStatus], updatedListing];
-      
-      // Actualizar estado
-      setListings(updatedListings);
+    } catch (error) {
+      console.error('Error cambiando estado:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cambiar el estado del anuncio. Por favor, intenta de nuevo.',
+        variant: 'destructive'
+      });
     }
   };
 
   // Toggle destacado
-  const handleToggleFeatured = (listingId: string) => {
-    // En una aplicación real, aquí llamaríamos a la API
+  const handleToggleFeatured = async (listingId: string) => {
+    if (!user) return;
     
-    const updatedListings = { ...listings };
-    
-    Object.keys(updatedListings).forEach((status) => {
-      const statusKey = status as keyof typeof updatedListings;
-      updatedListings[statusKey] = updatedListings[statusKey].map(listing => 
+    try {
+      // Primero encontramos el anuncio para saber su estado actual de destacado
+      let targetListing: CarListing | undefined;
+      let listingStatus: ListingStatus | undefined;
+      
+      Object.entries(listings).forEach(([status, statusListings]) => {
+        const found = statusListings.find(listing => listing.id === listingId);
+        if (found) {
+          targetListing = found;
+          listingStatus = status as ListingStatus;
+        }
+      });
+      
+      if (!targetListing || !listingStatus) return;
+      
+      const newFeaturedStatus = !targetListing.isFeatured;
+      
+      // Llamar al servicio para cambiar el estado destacado
+      await ListingService.toggleFeatured(listingId, newFeaturedStatus, user.id);
+      
+      // Actualizar el estado local
+      const updatedListings = { ...listings };
+      updatedListings[listingStatus] = updatedListings[listingStatus].map(listing => 
         listing.id === listingId 
-          ? { ...listing, isFeatured: !listing.isFeatured } 
+          ? { ...listing, isFeatured: newFeaturedStatus } 
           : listing
       );
-    });
-    
-    setListings(updatedListings);
-  };
-
-  // Renovar anuncio expirado
-  const handleRenewListing = (listingId: string) => {
-    // Encontrar el anuncio
-    const expiredListing = listings.expired.find(listing => listing.id === listingId);
-    
-    if (expiredListing) {
-      // Crear copia del estado actual
-      const updatedListings = { ...listings };
       
-      // Eliminar de expirados
-      updatedListings.expired = updatedListings.expired.filter(
-        listing => listing.id !== listingId
-      );
-      
-      // Actualizar fechas y estado
-      const now = new Date();
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + 30);
-      
-      const renewedListing = {
-        ...expiredListing,
-        status: 'active' as ListingStatus,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-        expiresAt: expiryDate.toISOString()
-      };
-      
-      // Añadir a activos
-      updatedListings.active = [...updatedListings.active, renewedListing];
-      
-      // Actualizar estado
       setListings(updatedListings);
+      
+      toast({
+        title: newFeaturedStatus ? 'Anuncio destacado' : 'Anuncio no destacado',
+        description: newFeaturedStatus 
+          ? 'Tu anuncio ahora aparecerá como destacado' 
+          : 'Tu anuncio ya no aparecerá como destacado'
+      });
+    } catch (error) {
+      console.error('Error cambiando estado destacado:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cambiar el estado destacado del anuncio. Por favor, intenta de nuevo.',
+        variant: 'destructive'
+      });
     }
   };
 
-  // Si está cargando la autenticación, mostrar spinner
-  if (authLoading) {
+  // Renovar un anuncio expirado (reactivarlo)
+  const handleRenewListing = async (listingId: string) => {
+    // Este es esencialmente un cambio de estado de 'expired' a 'active'
+    await handleStatusChange(listingId, 'active');
+  };
+
+  // Si está cargando la autenticación o los datos, mostrar spinner
+  if (authLoading || loading) {
     return (
       <div className="container py-10 flex flex-col items-center justify-center min-h-[70vh]">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -384,6 +389,7 @@ export default function MyListingsPage() {
                                   src={listing.images[0]} 
                                   alt={listing.title}
                                   fill
+                                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                   className="object-cover"
                                 />
                               </div>

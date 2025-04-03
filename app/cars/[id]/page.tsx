@@ -36,48 +36,7 @@ import { useTranslation } from '@/utils/translation-context';
 import { Car } from '@/types/car';
 import { formatCurrency, formatDate, formatMileage } from '@/utils/format';
 import { useAuth } from '@/utils/auth-hooks';
-
-// Simula la obtención de datos para un auto específico
-const fetchCarById = async (id: string): Promise<Car | null> => {
-  // Simular un retraso para mostrar el estado de carga
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  // Datos simulados para el auto (para demo)
-  const car: Car = {
-    id,
-    title: 'Toyota Corolla 2020',
-    brand: 'Toyota',
-    model: 'Corolla',
-    year: 2020,
-    category: 'sedan',
-    price: 3500000,
-    mileage: 25000,
-    fuelType: 'gasoline',
-    transmission: 'automatic',
-    features: [
-      'Aire acondicionado',
-      'Vidrios eléctricos',
-      'Cierre centralizado',
-      'Alarma',
-      'Dirección asistida',
-      'Airbags',
-      'Sistema antibloqueo de frenos (ABS)',
-      'Control de estabilidad (ESP)',
-      'Computadora de abordo',
-      'Bluetooth',
-      'Tapizado de cuero',
-      'Sensor de estacionamiento'
-    ],
-    description: 'Toyota Corolla 2020 en excelente estado. Un solo dueño, con mantenimiento al día y todas las revisiones realizadas en concesionario oficial. Versión full con tapizado de cuero, pantalla táctil, cámara de retroceso y mucho más. El auto ideal para la ciudad y viajes largos, combinando confort, seguridad y bajo consumo de combustible.',
-    location: 'Buenos Aires, Argentina',
-    images: ['/images/cars/sedan.jpeg', '/images/cars/suv.jpeg', '/images/cars/hatchback.jpeg'],
-    sellerId: 'seller-1',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  };
-  
-  return car;
-};
+import { CatalogService } from '@/services/catalog';
 
 export default function CarDetailPage() {
   const { t } = useTranslation();
@@ -101,7 +60,7 @@ export default function CarDetailPage() {
       setError(null);
       
       try {
-        const data = await fetchCarById(carId);
+        const data = await CatalogService.getListingById(carId);
         if (data) {
           setCar(data);
         } else {
@@ -219,40 +178,50 @@ export default function CarDetailPage() {
           {/* Galería de imágenes */}
           <div className="relative rounded-xl overflow-hidden">
             <div className="aspect-[16/9] relative">
-              <Image
-                src={car.images[currentImageIndex]}
-                alt={car.title}
-                fill
-                className="object-cover"
-                priority
-              />
+              {car.images && car.images.length > 0 ? (
+                <Image
+                  src={car.images[currentImageIndex]}
+                  alt={car.title}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <p className="text-muted-foreground">No hay imágenes disponibles</p>
+                </div>
+              )}
             </div>
             
-            {/* Controles de navegación */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 text-white hover:bg-black/50 rounded-full"
-              onClick={handlePrevImage}
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 text-white hover:bg-black/50 rounded-full"
-              onClick={handleNextImage}
-            >
-              <ChevronRight className="h-6 w-6" />
-            </Button>
-            
-            {/* Indicador de imágenes */}
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-              <div className="bg-black/50 rounded-full px-3 py-1 text-white text-xs">
-                {currentImageIndex + 1} / {car.images.length}
-              </div>
-            </div>
+            {/* Controles de navegación (solo si hay más de una imagen) */}
+            {car.images && car.images.length > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 text-white hover:bg-black/50 rounded-full"
+                  onClick={handlePrevImage}
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 text-white hover:bg-black/50 rounded-full"
+                  onClick={handleNextImage}
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </Button>
+                
+                {/* Indicador de imágenes */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                  <div className="bg-black/30 text-white px-3 py-1 rounded-full text-sm">
+                    {currentImageIndex + 1} / {car.images.length}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           
           {/* Información principal */}

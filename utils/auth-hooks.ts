@@ -9,6 +9,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -22,6 +23,18 @@ export function useAuth() {
       } else {
         setSession(session);
         setUser(session?.user || null);
+        
+        // Si hay un usuario, verificar si es admin
+        if (session?.user) {
+          const { data: isAdminData, error: adminError } = await supabase.rpc('is_admin');
+          
+          if (!adminError) {
+            setIsAdmin(isAdminData || false);
+          } else {
+            console.error('Error checking admin status:', adminError);
+            setIsAdmin(false);
+          }
+        }
       }
       
       setLoading(false);
@@ -29,9 +42,24 @@ export function useAuth() {
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user || null);
+      
+      // Verificar estado de admin cuando cambia la autenticación
+      if (session?.user) {
+        const { data: isAdminData, error: adminError } = await supabase.rpc('is_admin');
+        
+        if (!adminError) {
+          setIsAdmin(isAdminData || false);
+        } else {
+          console.error('Error checking admin status:', adminError);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+      
       router.refresh();
     });
 
@@ -50,6 +78,7 @@ export function useAuth() {
     session,
     signOut,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    isAdmin
   };
 } 

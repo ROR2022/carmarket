@@ -10,35 +10,69 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/utils/auth-hooks';
+import { ListingService } from '@/services/listings';
+import { StorageService } from '@/services/storage';
 
 export default function ListingPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Manejar envío del formulario
   const handleSubmit = async (data: ListingFormData) => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'Debes iniciar sesión para publicar un anuncio',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     try {
       setIsSubmitting(true);
+      console.log('creando anuncio con data: ', data);
+      // 1. Crear el anuncio en la base de datos
+      const listingId = await ListingService.createListing(data, user.id);
+      console.log('1.-listingId creado: ', listingId);
       
-      // Simulamos retraso de API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // 2. Subir imágenes y guardarlas en la base de datos (si hay imágenes)
+      if (data.images && data.images.length > 0) {
+        const uploadedImages = await StorageService.uploadListingImages(
+          data.images as File[], 
+          user.id, 
+          listingId
+        );
+        console.log('2.-uploadedImages subidas: ', uploadedImages);
+        
+        // 3. Guardar referencias a las imágenes en la base de datos
+        await StorageService.saveListingImages(listingId, uploadedImages);
+        console.log('3.-saveListingImages guardadas: ', listingId);
+      }
       
-      // En producción, aquí enviaríamos los datos a la API
-      console.log('Datos del formulario enviados:', data);
+      // 4. Subir documentos y guardarlos en la base de datos (si hay documentos)
+      if (data.documents && data.documents.length > 0) {
+        const uploadedDocuments = await StorageService.uploadListingDocuments(
+          data.documents as File[],
+          user.id,
+          listingId
+        );
+        console.log('4.-uploadedDocuments subidas: ', uploadedDocuments);
+        // 5. Guardar referencias a los documentos en la base de datos
+        await StorageService.saveListingDocuments(listingId, uploadedDocuments);
+        console.log('5.-saveListingDocuments guardadas: ', listingId);
+      }
       
-      // Redireccionamos a la página de mis anuncios
       toast({
         title: t('sell.listing.form.listingPublished'),
-        description: 'ID: ' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+        description: 'ID: ' + listingId,
       });
       
-      // Simulamos retraso antes de redirigir
-      setTimeout(() => {
-        router.push('/sell/my-listings');
-      }, 2000);
+      // Redirigir a la página de mis anuncios
+      router.push('/sell/my-listings');
+      
     } catch (error) {
       console.error('Error al publicar anuncio:', error);
       toast({
@@ -53,19 +87,29 @@ export default function ListingPage() {
 
   // Guardar borrador
   const handleSaveDraft = async (data: ListingFormData) => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'Debes iniciar sesión para guardar un borrador',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     try {
       setIsSavingDraft(true);
       
-      // Simulamos retraso de API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 1. Crear el anuncio como borrador
+      const listingId = await ListingService.saveDraft(data, user.id);
       
-      // En producción, aquí enviaríamos los datos a la API para guardar como borrador
-      console.log('Datos de borrador guardados:', data);
+      // No subimos archivos al guardar como borrador para ahorrar espacio de almacenamiento
+      // Los archivos se subirán cuando el usuario decida publicar el anuncio
       
       toast({
         title: t('sell.listing.form.draftSaved'),
-        description: 'ID: ' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+        description: 'ID: ' + listingId,
       });
+      
     } catch (error) {
       console.error('Error al guardar borrador:', error);
       toast({

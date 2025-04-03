@@ -7,7 +7,7 @@ import { CarCard } from '@/components/car/car-card';
 import { CarFilters } from '@/components/car/car-filters';
 import { CarPagination } from '@/components/car/car-pagination';
 import { useTranslation } from '@/utils/translation-context';
-import { Car, CarFilters as CarFiltersType, CarListResponse, PaginationInfo, SortOption, CarCategory } from '@/types/car';
+import { Car, CarFilters as CarFiltersType, PaginationInfo, SortOption, CarCategory } from '@/types/car';
 import { 
   Select,
   SelectContent,
@@ -18,129 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { capitalize } from '@/utils/format';
-
-// Reutilizamos la misma función de fetchCars pero la modificamos para filtrar por categoría automáticamente
-const fetchCarsByCategory = async (
-  category: CarCategory,
-  page = 1, 
-  pageSize = 12, 
-  filters: CarFiltersType = {}, 
-  sort: SortOption = 'created_desc'
-): Promise<CarListResponse> => {
-  // Simulamos un retraso para mostrar el estado de carga
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  // Importamos los datos simulados del otro archivo (en realidad los definimos de nuevo)
-  const MOCK_BRANDS = ['Toyota', 'Honda', 'Volkswagen', 'Chevrolet', 'Ford', 'Nissan', 'Hyundai', 'Mercedes-Benz', 'BMW', 'Audi'];
-  
-  // Generamos autos de prueba
-  const mockCars: Car[] = Array.from({ length: 50 }, (_, i) => ({
-    id: `car-${i + 1}`,
-    title: `${MOCK_BRANDS[i % MOCK_BRANDS.length]} Modelo ${(i % 10) + 1}`,
-    brand: MOCK_BRANDS[i % MOCK_BRANDS.length],
-    model: `Modelo ${(i % 10) + 1}`,
-    year: 2015 + (i % 9),
-    category: i % 3 === 0 ? 'sedan' : i % 3 === 1 ? 'suv' : 'hatchback',
-    price: 1500000 + (i * 100000),
-    mileage: 10000 + (i * 5000),
-    fuelType: i % 4 === 0 ? 'gasoline' : i % 4 === 1 ? 'diesel' : i % 4 === 2 ? 'electric' : 'hybrid',
-    transmission: i % 2 === 0 ? 'manual' : 'automatic',
-    features: ['Air Conditioning', 'Power Windows', 'Central Locking'],
-    description: `Este es un ${MOCK_BRANDS[i % MOCK_BRANDS.length]} en excelente estado. Posee ${i % 2 === 0 ? 'transmisión manual' : 'transmisión automática'} y motor ${i % 4 === 0 ? 'a gasolina' : i % 4 === 1 ? 'diésel' : i % 4 === 2 ? 'eléctrico' : 'híbrido'}.`,
-    location: 'Buenos Aires, Argentina',
-    images: [
-      i % 3 === 0 
-        ? '/images/cars/sedan.jpeg' 
-        : i % 3 === 1 
-          ? '/images/cars/suv.jpeg'
-          : '/images/cars/hatchback.jpeg'
-    ],
-    sellerId: `seller-${(i % 5) + 1}`,
-    createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - i * 12 * 60 * 60 * 1000).toISOString(),
-  }));
-  
-  // Filtramos primero por categoría
-  let filteredCars = mockCars.filter(car => car.category === category);
-  
-  // Aplicamos los demás filtros
-  if (filters.minPrice !== undefined) {
-    filteredCars = filteredCars.filter(car => car.price >= filters.minPrice!);
-  }
-  
-  if (filters.maxPrice !== undefined) {
-    filteredCars = filteredCars.filter(car => car.price <= filters.maxPrice!);
-  }
-  
-  if (filters.minYear !== undefined) {
-    filteredCars = filteredCars.filter(car => car.year >= filters.minYear!);
-  }
-  
-  if (filters.maxYear !== undefined) {
-    filteredCars = filteredCars.filter(car => car.year <= filters.maxYear!);
-  }
-  
-  if (filters.brands) {
-    filteredCars = filteredCars.filter(car => filters.brands?.includes(car.brand));
-  }
-  
-  if (filters.models) {
-    filteredCars = filteredCars.filter(car => 
-      filters.models?.includes(car.model)
-    );
-  }
-  
-  if (filters.transmissions) {
-    filteredCars = filteredCars.filter(car => filters.transmissions?.includes(car.transmission));
-  }
-  
-  if (filters.fuelTypes) {
-    filteredCars = filteredCars.filter(car => filters.fuelTypes?.includes(car.fuelType));
-  }
-  
-  if (filters.maxMileage !== undefined) {
-    filteredCars = filteredCars.filter(car => car.mileage <= filters.maxMileage!);
-  }
-  
-  // Ordenamos los resultados
-  switch (sort) {
-    case 'price_desc':
-      filteredCars.sort((a, b) => b.price - a.price);
-      break;
-    case 'price_asc':
-      filteredCars.sort((a, b) => a.price - b.price);
-      break;
-    case 'year_desc':
-      filteredCars.sort((a, b) => b.year - a.year);
-      break;
-    case 'year_asc':
-      filteredCars.sort((a, b) => a.year - b.year);
-      break;
-    case 'created_desc':
-    default:
-      filteredCars.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      break;
-  }
-  
-  // Calculamos la paginación
-  const totalItems = filteredCars.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalItems);
-  const paginatedCars = filteredCars.slice(startIndex, endIndex);
-  
-  return {
-    cars: paginatedCars,
-    pagination: {
-      currentPage: page,
-      totalPages,
-      pageSize,
-      totalItems,
-      hasNext: page < totalPages,
-      hasPrev: page > 1
-    }
-  };
-};
+import { CatalogService } from '@/services/catalog';
 
 // Función para obtener un título amigable para cada categoría
 const getCategoryTitle = (category: string): string => {
@@ -180,9 +58,26 @@ export default function CategoryPage() {
     hasNext: false,
     hasPrev: false
   });
-  const [filters, setFilters] = useState<CarFiltersType>({});
+  const [filters, setFilters] = useState<CarFiltersType>({
+    categories: [category] // Configurar categoría desde la URL por defecto
+  });
   const [sortOption, setSortOption] = useState<SortOption>('created_desc');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  
+  // Cargar marcas disponibles
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const brands = await CatalogService.getAvailableBrands();
+        setAvailableBrands(brands);
+      } catch (err) {
+        console.error('Error loading brands:', err);
+      }
+    };
+    
+    loadBrands();
+  }, []);
   
   // Cargar autos al iniciar o cambiar filtros/página
   useEffect(() => {
@@ -190,12 +85,17 @@ export default function CategoryPage() {
       setLoading(true);
       setError(null);
       
+      // Asegurarnos de que siempre filtramos por la categoría actual
+      const categoryFilters = {
+        ...filters,
+        categories: [category]
+      };
+      
       try {
-        const result = await fetchCarsByCategory(
-          category,
+        const result = await CatalogService.searchListings(
+          categoryFilters,
           pagination.currentPage,
           pagination.pageSize,
-          filters,
           sortOption
         );
         
@@ -225,7 +125,12 @@ export default function CategoryPage() {
   
   // Aplicar filtros
   const handleApplyFilters = (newFilters: CarFiltersType) => {
-    setFilters(newFilters);
+    // Mantener la categoría en los filtros
+    setFilters({
+      ...newFilters,
+      categories: [category]
+    });
+    
     setPagination(prev => ({
       ...prev,
       currentPage: 1  // Volver a la primera página al aplicar filtros
@@ -234,7 +139,11 @@ export default function CategoryPage() {
   
   // Limpiar filtros
   const handleClearFilters = () => {
-    setFilters({});
+    // Mantener solo el filtro de categoría
+    setFilters({
+      categories: [category]
+    });
+    
     setPagination(prev => ({
       ...prev,
       currentPage: 1
@@ -259,21 +168,20 @@ export default function CategoryPage() {
   
   return (
     <div className="container py-10">
-      <div className="mb-6">
-        <Link href="/cars">
-          <Button variant="ghost" className="pl-0">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a todos los autos
-          </Button>
-        </Link>
-      </div>
-      
       <div className="flex flex-col items-center justify-center space-y-4 text-center mb-10">
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="ghost" size="sm" className="mb-2" asChild>
+            <Link href="/cars">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              {t('common.back_to_all_cars')}
+            </Link>
+          </Button>
+        </div>
         <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
           {categoryName}
         </h1>
         <p className="max-w-[800px] text-muted-foreground md:text-xl">
-          Explora nuestra selección de {categoryName.toLowerCase()} de alta calidad
+          {t(`categories.${category}_description`)}
         </p>
       </div>
       
@@ -285,7 +193,7 @@ export default function CategoryPage() {
               onApplyFilters={handleApplyFilters}
               onClearFilters={handleClearFilters}
               initialFilters={filters}
-              availableBrands={['Toyota', 'Honda', 'Volkswagen', 'Chevrolet', 'Ford', 'Nissan', 'Hyundai', 'Mercedes-Benz', 'BMW', 'Audi']}
+              availableBrands={availableBrands}
             />
           </div>
         </div>
@@ -308,11 +216,11 @@ export default function CategoryPage() {
                   <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="newest">{t('cars.sort.newest')}</SelectItem>
-                  <SelectItem value="priceHighToLow">{t('cars.sort.priceHighToLow')}</SelectItem>
-                  <SelectItem value="priceLowToHigh">{t('cars.sort.priceLowToHigh')}</SelectItem>
-                  <SelectItem value="yearNewest">{t('cars.sort.yearNewest')}</SelectItem>
-                  <SelectItem value="yearOldest">{t('cars.sort.yearOldest')}</SelectItem>
+                  <SelectItem value="created_desc">{t('cars.sort.newest')}</SelectItem>
+                  <SelectItem value="price_desc">{t('cars.sort.priceHighToLow')}</SelectItem>
+                  <SelectItem value="price_asc">{t('cars.sort.priceLowToHigh')}</SelectItem>
+                  <SelectItem value="year_desc">{t('cars.sort.yearNewest')}</SelectItem>
+                  <SelectItem value="year_asc">{t('cars.sort.yearOldest')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -330,7 +238,7 @@ export default function CategoryPage() {
             </div>
           ) : cars.length === 0 ? (
             <div className="text-center py-12">
-              <p>{t('cars.noResults')}</p>
+              <p>{t('cars.noCarsInCategory')}</p>
             </div>
           ) : (
             <>

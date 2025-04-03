@@ -28,9 +28,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useTranslation } from '@/utils/translation-context';
-import { ValuationRequest, ValuationResponse } from '@/types/listing';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
-import { Transmission, FuelType, CarCategory } from '@/types/car';
+import { ValuationService, VehicleValuationInput, VehicleValuationResult } from '@/services/valuations';
+import { useAuth } from '@/utils/auth-hooks';
 
 // Simulación de marcas y modelos para el formulario
 const MOCK_BRANDS = ['Toyota', 'Honda', 'Volkswagen', 'Chevrolet', 'Ford', 'Nissan', 'Hyundai', 'Mercedes-Benz', 'BMW', 'Audi'];
@@ -78,60 +78,13 @@ const valuationFormSchema = z.object({
   })
 });
 
-// Simular una llamada a API para obtener valoración
-const getValuation = async (data: ValuationRequest): Promise<ValuationResponse> => {
-  // Simulamos un retraso de 1.5 segundos
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Calculamos una valoración basada en los datos ingresados
-  const basePrice = 250000;
-  const yearFactor = 1 - ((new Date().getFullYear() - parseInt(data.year.toString())) * 0.05);
-  const mileageFactor = 1 - (parseInt(data.mileage.toString()) / 200000);
-  const conditionFactor = {
-    'excellent': 1.1,
-    'good': 1,
-    'fair': 0.85,
-    'poor': 0.7
-  }[data.condition as 'excellent' | 'good' | 'fair' | 'poor'] || 1;
-  
-  const extras = data.extras?.length || 0;
-  const extrasFactor = 1 + (extras * 0.01);
-  
-  // Precio calculado en base a factores
-  const calculatedPrice = basePrice * yearFactor * mileageFactor * conditionFactor * extrasFactor;
-  
-  // Variabilidad para min y max 
-  const minPrice = Math.round(calculatedPrice * 0.9);
-  const maxPrice = Math.round(calculatedPrice * 1.1);
-  const avgPrice = Math.round(calculatedPrice);
-  
-  // Fecha de expiración (15 días a partir de hoy)
-  const expiryDate = new Date();
-  expiryDate.setDate(expiryDate.getDate() + 15);
-  
-  return {
-    estimatedPrice: {
-      min: minPrice,
-      max: maxPrice,
-      average: avgPrice
-    },
-    valuationId: `VAL-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-    expiresAt: expiryDate.toISOString(),
-    recommendedListingPrice: Math.round(calculatedPrice * 1.05),
-    marketAnalysis: {
-      averageTimeOnMarket: 21,
-      demandLevel: calculatedPrice > 300000 ? 'medium' : 'high',
-      similarListingsCount: Math.floor(Math.random() * 20) + 5
-    }
-  };
-};
-
 export default function ValuationPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [valuation, setValuation] = useState<ValuationResponse | null>(null);
+  const [valuation, setValuation] = useState<VehicleValuationResult | null>(null);
   
   // Configuración del formulario con react-hook-form y zod
   const form = useForm<z.infer<typeof valuationFormSchema>>({
@@ -186,32 +139,36 @@ export default function ValuationPage() {
       setIsSubmitting(true);
       
       // Convertir datos del formulario al formato requerido para la API
-      const valuationRequest: ValuationRequest = {
+      const valuationInput: VehicleValuationInput = {
         brand: data.brand,
         model: data.model,
         year: parseInt(data.year),
         mileage: parseInt(data.mileage),
-        transmission: data.transmission as Transmission,
-        fuelType: data.fuelType as FuelType,
-        category: data.category as CarCategory,
-        condition: data.condition as 'excellent' | 'good' | 'fair' | 'poor',
+        transmission: data.transmission,
+        fuelType: data.fuelType,
+        category: data.category,
+        condition: data.condition,
         extras: data.extras || [],
-        contactName: data.contactName,
-        contactEmail: data.contactEmail,
-        contactPhone: data.contactPhone
+        name: data.contactName,
+        email: data.contactEmail,
+        phone: data.contactPhone
       };
       
-      // Llamada a API simulada
-      const result = await getValuation(valuationRequest);
+      // Obtener valoración del servicio
+      const valuationResult = await ValuationService.getValuation(
+        valuationInput, 
+        isAuthenticated ? user?.id : undefined
+      );
       
-      // Guardamos el resultado
-      setValuation(result);
+      // Guardar el resultado para mostrarlo
+      setValuation(valuationResult);
       
-      // Avanzamos al paso de resultado
+      // Avanzar al paso de resultados
       setStep(4);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      console.error("Error al obtener valoración:", error);
+      console.error('Error al obtener valoración:', error);
+      // Mostrar error al usuario aquí
     } finally {
       setIsSubmitting(false);
     }
@@ -698,19 +655,48 @@ export default function ValuationPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Valor estimado */}
-              <div className="text-center py-4">
-                <h3 className="text-lg font-medium mb-2">{t('sell.valuation.result.estimatedValue')}</h3>
-                <div className="text-4xl font-bold text-primary">
-                  {formatCurrency(valuation.estimatedPrice.average)}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4">{t('sell.valuation.resultSection.estimatedValue')}</h2>
+                <div className="grid gap-4 md:grid-cols-3 mb-6">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-1">{t('sell.valuation.resultSection.minimum')}</p>
+                        <p className="text-2xl font-bold">{formatCurrency(valuation.estimatedMinPrice)}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-primary">
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-sm text-primary mb-1">{t('sell.valuation.resultSection.recommended')}</p>
+                        <p className="text-3xl font-bold text-primary">{formatCurrency(valuation.recommendedPrice)}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-1">{t('sell.valuation.resultSection.maximum')}</p>
+                        <p className="text-2xl font-bold">{formatCurrency(valuation.estimatedMaxPrice)}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div className="flex justify-center gap-6 mt-2 text-sm text-muted-foreground">
-                  <div>
-                    <span className="font-medium">{t('sell.valuation.result.minValue')}:</span>{' '}
-                    {formatCurrency(valuation.estimatedPrice.min)}
+                
+                <h3 className="text-lg font-semibold mb-3">{t('sell.valuation.resultSection.marketAnalysis')}</h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="bg-muted p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">{t('sell.valuation.resultSection.demandLevel')}</p>
+                    <p className="font-medium">{t(`sell.valuation.resultSection.demand.${valuation.marketAnalysis.demandLevel}`)}</p>
                   </div>
-                  <div>
-                    <span className="font-medium">{t('sell.valuation.result.maxValue')}:</span>{' '}
-                    {formatCurrency(valuation.estimatedPrice.max)}
+                  <div className="bg-muted p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">{t('sell.valuation.resultSection.averageSalesTime')}</p>
+                    <p className="font-medium">{valuation.marketAnalysis.salesTime} {t('sell.valuation.resultSection.days')}</p>
+                  </div>
+                  <div className="bg-muted p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">{t('sell.valuation.resultSection.similarListings')}</p>
+                    <p className="font-medium">{valuation.marketAnalysis.similarListings} {t('sell.valuation.resultSection.vehicles')}</p>
                   </div>
                 </div>
               </div>
@@ -724,7 +710,7 @@ export default function ValuationPage() {
                   <Card>
                     <CardContent className="pt-6 text-center">
                       <div className="text-2xl font-bold mb-1">
-                        {valuation.marketAnalysis.averageTimeOnMarket}
+                        {valuation.marketAnalysis.salesTime}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {t('sell.valuation.result.timeOnMarket')} ({t('sell.valuation.result.days')})
@@ -751,7 +737,7 @@ export default function ValuationPage() {
                   <Card>
                     <CardContent className="pt-6 text-center">
                       <div className="text-2xl font-bold mb-1">
-                        {valuation.marketAnalysis.similarListingsCount}
+                        {valuation.marketAnalysis.similarListings}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {t('sell.valuation.result.similarListings')}
@@ -768,7 +754,7 @@ export default function ValuationPage() {
                 <div className="mb-4">
                   <h3 className="text-lg font-medium mb-1">{t('sell.valuation.result.recommendedPrice')}</h3>
                   <div className="text-2xl font-bold text-primary">
-                    {formatCurrency(valuation.recommendedListingPrice)}
+                    {formatCurrency(valuation.recommendedPrice)}
                   </div>
                 </div>
                 
