@@ -42,7 +42,7 @@ export default function CarCategories() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories.map((category) => (
-            <Link href={`/cars/category/${category.slug}`} key={category.slug}>
+            <Link href={`/cars?category=${category.slug}`} key={category.slug}>
               <Card className="overflow-hidden transition-all hover:shadow-lg">
                 <Image
                   src={category.image || "/placeholder.svg"}

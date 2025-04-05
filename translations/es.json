@@ -145,6 +145,7 @@
     "loading": "Cargando vehículos...",
     "error": "Error al cargar los vehículos. Por favor, intenta de nuevo.",
     "not_found": "Vehículo no encontrado",
+    "for_search": "Para tu búsqueda",
     "description": "Descripción",
     "features": "Características",
     "final_price": "Precio final",
@@ -813,6 +814,32 @@
         "requestInspection": "Solicitar inspección",
         "valuationExpiry": "Esta valoración es válida hasta",
         "disclaimer": "Esta valoración es una estimación basada en datos del mercado y puede variar según la condición específica del vehículo."
+      },
+      "resultSection": {
+        "title": "Valoración estimada",
+        "subtitle": "Basada en vehículos similares en el mercado",
+        "estimatedValue": "Valor estimado",
+        "minimum": "Valor mínimo",
+        "maximum": "Valor máximo",
+        "recommended": "Precio recomendado para venta",
+        "marketAnalysis": "Análisis de mercado",
+        "demandLevel": "Nivel de demanda",
+        "demand":{
+          "low": "Bajo",
+          "medium": "Medio",
+          "high": "Alto",
+          "veryHigh": "Muy alto"
+        },
+        "timeOnMarket": "Tiempo promedio en mercado",
+        "averageSalesTime": "Tiempo promedio de venta",
+        "days": "días",
+        "vehicles": "vehículos",
+        "similarListings": "Anuncios similares",
+        "nextStepsTitle": "Próximos pasos",
+        "createListing": "Crear anuncio",
+        "requestInspection": "Solicitar inspección",
+        "valuationExpiry": "Esta valoración es válida hasta",
+        "disclaimer": "Esta valoración es una estimación basada en datos del mercado y puede variar según la condición específica del vehículo."
       }
     },
     "listing": {
@@ -957,5 +984,13 @@
       "totalUsers": "Total de usuarios",
       "newListingsToday": "Nuevos anuncios hoy"
     }
+  },
+  "formRecovery": {
+    "title": "Recuperar formulario",
+    "recover": "Recuperar formulario",
+    "discard": "Descartar cambios",
+    "lastEdited": "Última edición",
+    "description": "¿Qué deseas hacer con el formulario guardado?",
+    "progress": "Progreso"
   }
 } 

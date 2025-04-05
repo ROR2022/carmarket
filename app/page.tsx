@@ -7,9 +7,22 @@ import FeaturedCars from "@/components/featured-cars"
 import HowItWorks from "@/components/how-it-works"
 import CarCategories from "@/components/car-categories"
 import { useTranslation } from "@/utils/translation-context"
+import { useState, FormEvent } from "react"
+import { useRouter } from "next/navigation"
 
 export default function HomePage() {
   const { t } = useTranslation()
+  const router = useRouter()
+  const [searchTerm, setSearchTerm] = useState("")
+  
+  // Manejar el envío del formulario de búsqueda
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault()
+    if (searchTerm.trim()) {
+      // Redirigir a la página de autos con el término de búsqueda como parámetro
+      router.push(`/cars?searchTerm=${encodeURIComponent(searchTerm.trim())}`)
+    }
+  }
   
   return (
     <div className="flex flex-col min-h-screen pt-8" style={{ maxWidth: '95vw', margin: 'auto' }}>
@@ -20,7 +33,7 @@ export default function HomePage() {
             <h1 className="text-4xl md:text-5xl font-bold mb-4">{t("homePage.hero.title")}</h1>
             <p className="text-xl mb-8">{t("homePage.hero.subtitle")}</p>
 
-            <div className="bg-white p-4 rounded-lg shadow-lg">
+            <form onSubmit={handleSearch} className="bg-white p-4 rounded-lg shadow-lg">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
@@ -28,15 +41,17 @@ export default function HomePage() {
                     <input
                       type="text"
                       placeholder={t("homePage.hero.searchPlaceholder")}
-                      className="w-full pl-10 pr-4 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:outline-none"
+                      className="w-full text-black dark:text-white pl-10 pr-4 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:outline-none"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
                 </div>
-                <Button size="lg" className="shrink-0">
+                <Button type="submit" size="lg" className="shrink-0">
                   {t("homePage.hero.searchButton")}
                 </Button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       </section>

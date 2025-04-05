@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -30,12 +30,40 @@ import { CarCategory, FuelType, Transmission } from '@/types/car';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, ArrowRight, Loader2, UploadCloud } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, UploadCloud, CheckCircle } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import Image from 'next/image';
+import { saveFormData, updateFormStep, getFormMeta, getFormData } from '@/utils/form-storage';
+import { useDebounce } from '@/utils/hooks';
+import { AutoSaveIndicator } from '@/components/sell/auto-save-indicator';
 
 // Simulación de marcas para el formulario
-const MOCK_BRANDS = ['Toyota', 'Honda', 'Volkswagen', 'Chevrolet', 'Ford', 'Nissan', 'Hyundai', 'Mercedes-Benz', 'BMW', 'Audi'];
+const MOCK_BRANDS = [
+  'Toyota', 
+  'Honda', 
+  'Volkswagen', 
+  'Chevrolet', 
+  'Ford', 
+  'Nissan', 
+  'Hyundai', 
+  'Mercedes-Benz', 
+  'BMW', 
+  'Audi', 
+  'Peugeot', 
+  'Renault', 
+  'Volvo', 
+  'Jeep', 
+  'Kia', 
+  'Mazda', 
+  'Subaru', 
+  'Dodge',
+  'Land Rover',
+  'Lexus',
+  'Lincoln', 
+  'Mitsubishi', 
+  'Skoda',
+  'Suzuki'
+];
 
 // Array para los años
 const YEARS = Array.from({ length: new Date().getFullYear() - 1990 + 1 }, (_, i) => new Date().getFullYear() - i);
@@ -107,7 +135,39 @@ interface CarListingFormProps {
   initialData?: Partial<ListingFormData>;
   isSubmitting?: boolean;
   isSavingDraft?: boolean;
+  userId?: string;
+  onAutoSave?: (data: Partial<ListingFormData>, currentStep: number) => void;
+  currentStep?: number;
 }
+
+// Constantes
+const FORM_ID = 'car-listing-form';
+const AUTOSAVE_DEBOUNCE_MS = 3000; // 3 segundos
+const FORM_VERSION = '1.0';
+const _MAX_IMAGES = 10;
+const _MAX_DOCUMENTS = 5;
+const _MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+// Helper function to safely save form data only when userId is a string
+const safeSaveFormData = <T extends Record<string, unknown>>(
+  data: T,
+  options: Omit<Parameters<typeof saveFormData>[2], 'userId'> & { userId?: string }
+) => {
+  if (typeof options.userId === 'string') {
+    console.log(`Guardando datos en localStorage, formId: ${FORM_ID}, paso: ${options.currentStep}`);
+    try {
+      saveFormData(FORM_ID, data, {
+        ...options,
+        userId: options.userId
+      });
+      console.log('Datos guardados correctamente');
+    } catch (error) {
+      console.error('Error al guardar datos del formulario:', error);
+    }
+  } else {
+    console.warn('No se guardaron los datos: userId no es un string o está vacío', options.userId);
+  }
+};
 
 export function CarListingForm({
   onSubmit,
@@ -115,16 +175,43 @@ export function CarListingForm({
   onPreview,
   initialData,
   isSubmitting = false,
-  isSavingDraft = false
+  isSavingDraft = false,
+  userId,
+  onAutoSave,
+  currentStep
 }: CarListingFormProps) {
   const { t } = useTranslation();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(currentStep || 1);
   const [images, setImages] = useState<File[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [documentNames, setDocumentNames] = useState<string[]>([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [pendingSave, setPendingSave] = useState(false);
+  const lastSavedDataRef = useRef<string>('');
+  const [recoverySuccess, setRecoverySuccess] = useState(false);
+  const proactiveRecoveryAttemptedRef = useRef(false);
+  const _initialFormKey = useRef(Math.random().toString(36).substring(7));
   
-  // Configuración del formulario
+  // Función para limpiar/reiniciar el estado del formulario
+  const resetFormState = useCallback(() => {
+    console.log('Reseteando estado del formulario');
+    setImages([]);
+    setDocuments([]);
+    setImagePreviewUrls([]);
+    setDocumentNames([]);
+    setHasUnsavedChanges(false);
+    setIsAutoSaving(false);
+    setLastSaved(null);
+    setPendingSave(false);
+    lastSavedDataRef.current = '';
+    proactiveRecoveryAttemptedRef.current = false;
+    setStep(1);
+  }, []);
+  
+  // Usar el formulario
   const form = useForm<z.infer<typeof listingFormSchema>>({
     resolver: zodResolver(listingFormSchema),
     defaultValues: {
@@ -150,6 +237,359 @@ export function CarListingForm({
       termsAccepted: false
     }
   });
+  
+  // Observar cambios en el formulario para el auto-guardado
+  const formValues = form.watch();
+  const debouncedFormValues = useDebounce(formValues, AUTOSAVE_DEBOUNCE_MS);
+  
+  // Preparar metadatos de archivos para guardar información sobre ellos
+  const prepareFilesMeta = useCallback(() => {
+    const filesMeta = [
+      ...images.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      })),
+      ...documents.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      }))
+    ];
+    
+    return filesMeta;
+  }, [images, documents]);
+  
+  // Auto-guardar cuando cambian los valores del formulario
+  useEffect(() => {
+    // Solo guardar si hay userId y si hay datos en el formulario
+    if (!userId || Object.keys(debouncedFormValues).length === 0) return;
+
+    // Preparar los datos a guardar
+    const currentFormData = {
+      ...debouncedFormValues,
+      // These fields cannot be saved directly to localStorage
+      // as File objects cannot be serialized
+      images: [],
+      documents: []
+    };
+    
+    // Verificar si los datos han cambiado realmente
+    const currentDataString = JSON.stringify(currentFormData);
+    if (currentDataString === lastSavedDataRef.current) {
+      console.log('Los datos no han cambiado desde el último guardado, omitiendo guardado automático');
+      return;
+    }
+    
+    // Marcar que hay una operación de guardado pendiente
+    setPendingSave(true);
+    
+    // Configura un temporizador para el guardado con debounce adicional
+    // Esto ayuda a evitar guardados muy frecuentes
+    const saveTimer = setTimeout(() => {
+      console.log('Ejecutando guardado automático después del debounce');
+      setIsAutoSaving(true);
+      
+      // Usar onAutoSave si está disponible, de lo contrario usar safeSaveFormData directamente
+      if (onAutoSave) {
+        // Convertir formData a Partial<ListingFormData> para cumplir con los tipos
+        const typedFormData: Partial<ListingFormData> = {
+          ...currentFormData,
+          category: (currentFormData.category as string) as CarCategory,
+          transmission: (currentFormData.transmission as string) as Transmission,
+          fuelType: (currentFormData.fuelType as string) as FuelType
+        };
+        onAutoSave(typedFormData, step);
+      } else {
+        safeSaveFormData(currentFormData, {
+          userId,
+          currentStep: step,
+          filesMeta: prepareFilesMeta(),
+          formVersion: FORM_VERSION
+        });
+      }
+      
+      // Actualizar la referencia de los últimos datos guardados
+      lastSavedDataRef.current = currentDataString;
+      
+      // Actualizar el estado de guardado
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+      setPendingSave(false);
+      
+      // Ocultar el indicador de guardado después de un momento
+      setTimeout(() => setIsAutoSaving(false), 1000);
+    }, 1000); // Debounce adicional de 1 segundo después del debounce principal
+    
+    // Limpiar el temporizador si el componente se desmonta o los datos cambian nuevamente
+    return () => clearTimeout(saveTimer);
+  }, [debouncedFormValues, userId, step, onAutoSave, prepareFilesMeta]);
+  
+  // Actualizar el paso guardado cuando cambia
+  useEffect(() => {
+    // Solo actualizar si hay userId
+    if (!userId) return;
+    
+    // Update saved step
+    try {
+      updateFormStep(FORM_ID, step, userId);
+    } catch (error) {
+      console.error('Error updating form step:', error);
+    }
+  }, [step, userId]);
+  
+  // Guardar cuando el usuario cierra la ventana
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // No hacer nada si no hay userId
+      if (!userId) return;
+      
+      console.log('Evento beforeUnload detectado - guardando datos antes de cerrar/recargar');
+      
+      // Obtener los datos actuales del formulario
+      const currentFormData = {
+        ...form.getValues(),
+        images: [],
+        documents: []
+      };
+      
+      // Convertir a cadena para comparar
+      const currentDataString = JSON.stringify(currentFormData);
+      
+      try {
+        // Guardar datos de emergencia siempre (sin comparar con los anteriores)
+        // Esto proporciona una capa adicional de seguridad
+        localStorage.setItem('form_emergency_last_values', JSON.stringify(currentFormData));
+        localStorage.setItem('form_emergency_last_step', step.toString());
+        localStorage.setItem('form_emergency_save_timestamp', Date.now().toString());
+        console.log('Datos de emergencia guardados para posible recuperación');
+        
+        // Solo guardar en formato normal si hay cambios respecto al último guardado
+        if (currentDataString !== lastSavedDataRef.current) {
+          console.log('Cambios detectados, guardando antes de cerrar/recargar la página');
+          
+          // Convertir formData a Partial<ListingFormData> para cumplir con los tipos
+          const typedFormData: Partial<ListingFormData> = {
+            ...currentFormData,
+            category: (currentFormData.category as string) as CarCategory,
+            transmission: (currentFormData.transmission as string) as Transmission,
+            fuelType: (currentFormData.fuelType as string) as FuelType
+          };
+          
+          // Usar onAutoSave si está disponible, de lo contrario usar safeSaveFormData directamente
+          if (onAutoSave) {
+            onAutoSave(typedFormData, step);
+          } else {
+            // Guardar de forma sincrónica para asegurar que se complete antes de cerrar
+            safeSaveFormData(currentFormData, {
+              userId,
+              currentStep: step,
+              filesMeta: prepareFilesMeta(),
+              formVersion: FORM_VERSION
+            });
+          }
+          
+          // Actualizar la referencia aunque probablemente no se use después de cerrar
+          lastSavedDataRef.current = currentDataString;
+        } else {
+          console.log('No hay cambios para el guardado normal, pero se guardaron datos de emergencia');
+        }
+      } catch (error) {
+        console.error('Error al guardar datos antes de cerrar:', error);
+      }
+      
+      // Mostrar mensaje de confirmación (algunos navegadores lo ignoran)
+      event.preventDefault();
+      event.returnValue = '¿Estás seguro de que deseas salir? Los cambios han sido guardados.';
+      return event.returnValue;
+    };
+
+    // Registrar el evento
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Limpiar al desmontar
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [userId, form, step, prepareFilesMeta, onAutoSave]);
+  
+  // Marcar que hay cambios sin guardar cuando se modifican los archivos
+  useEffect(() => {
+    setHasUnsavedChanges(true);
+  }, [images, documents]);
+  
+  // Auto-guardar cuando cambia el paso del formulario o se desmonta el componente
+  useEffect(() => {
+    // Actualizar el paso actual en localStorage
+    if (userId) {
+      updateFormStep(FORM_ID, step, userId);
+    }
+    
+    // Guardar al desmontar el componente
+    return () => {
+      if (userId && hasUnsavedChanges) {
+        const currentFormData = {
+          ...form.getValues(),
+          images: [],
+          documents: []
+        };
+        
+        safeSaveFormData(currentFormData, {
+          userId,
+          currentStep: step,
+          filesMeta: prepareFilesMeta(),
+          formVersion: FORM_VERSION
+        });
+      }
+    };
+  }, [step, userId, hasUnsavedChanges, form, prepareFilesMeta]);
+  
+  // Efecto para reiniciar el formulario cuando cambia initialData o su existencia
+  useEffect(() => {
+    // Comprobar si initialData se ha establecido o ha cambiado a null/undefined
+    if (initialData === undefined || initialData === null) {
+      console.log('initialData es null o undefined, reseteando formulario');
+      form.reset({
+        brand: "",
+        model: "",
+        year: new Date().getFullYear(),
+        category: "",
+        transmission: "",
+        fuelType: "",
+        mileage: 0,
+        color: "",
+        vinNumber: "",
+        licensePlate: "",
+        features: [],
+        description: "",
+        location: "",
+        sellerName: "",
+        sellerEmail: "",
+        sellerPhone: "",
+        price: 0,
+        negotiable: false,
+        acceptsTrade: false,
+        termsAccepted: false
+      });
+      
+      resetFormState();
+      return;
+    }
+    
+    // Si hay initialData, actualizar formulario
+    console.log('Actualizando formulario con initialData:', initialData);
+    form.reset(initialData);
+    
+    // Si hay paso guardado, establecerlo
+    if (currentStep) {
+      setStep(currentStep);
+    }
+    
+    // Actualizar lastSavedDataRef para prevenir guardado innecesario
+    lastSavedDataRef.current = JSON.stringify({
+      ...initialData,
+      images: [],
+      documents: []
+    });
+    
+    // Mostrar mensaje de éxito de recuperación brevemente
+    setRecoverySuccess(true);
+    setTimeout(() => setRecoverySuccess(false), 3000);
+  }, [initialData, form, currentStep, resetFormState]);
+  
+  // Verificación de que los datos iniciales se aplicaron correctamente
+  useEffect(() => {
+    // Ejecutar solo una vez después de que initialData se haya procesado
+    if (!initialData) return;
+    
+    const timer = setTimeout(() => {
+      const currentValues = form.getValues();
+      console.log('Verificación de valores aplicados:', {
+        hasInitialBrand: !!initialData.brand,
+        currentBrand: currentValues.brand,
+        valuesMatch: initialData.brand === currentValues.brand
+      });
+      
+      // Si los valores no coinciden, intentar aplicar de nuevo
+      if (initialData.brand && currentValues.brand !== initialData.brand) {
+        console.log('Los valores no se aplicaron correctamente, reintentando');
+        form.reset(initialData);
+        
+        // Mostrar mensaje de recuperación exitosa
+        setRecoverySuccess(true);
+        setTimeout(() => setRecoverySuccess(false), 3000);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [initialData, form]);
+  
+  // Debug de valores iniciales - ayuda a diagnosticar problemas de persistencia
+  useEffect(() => {
+    if (initialData) {
+      console.log('CarListingForm: initialData aplicado al formulario', initialData);
+      
+      // Verificar si los valores iniciales se aplicaron correctamente
+      const currentValues = form.getValues();
+      console.log('CarListingForm: valores actuales del formulario', currentValues);
+      
+      // Reiniciar formulario con los valores iniciales si es necesario
+      if (Object.keys(currentValues).length === 0 || 
+          (currentValues.brand === "" && initialData.brand)) {
+        console.log('CarListingForm: Reiniciando formulario con valores iniciales');
+        form.reset(initialData);
+      }
+    }
+  }, [initialData, form]);
+  
+  // Recuperación proactiva si no hay datos iniciales pero sí hay userId
+  useEffect(() => {
+    // Evitar intentos repetidos de recuperación proactiva
+    if (proactiveRecoveryAttemptedRef.current) return;
+    
+    // Solo intentar recuperación proactiva si tenemos userId pero no initialData
+    if (userId && !initialData) {
+      console.log('Iniciando recuperación proactiva en CarListingForm');
+      proactiveRecoveryAttemptedRef.current = true;
+      
+      try {
+        const savedData = getFormData(FORM_ID, userId);
+        console.log('Resultado de recuperación proactiva:', !!savedData);
+        
+        if (savedData) {
+          console.log('Datos encontrados en recuperación proactiva', savedData);
+          
+          // Aplicar directamente al formulario con casting seguro
+          form.reset(savedData as unknown as Partial<ListingFormData>);
+          
+          // Actualizar estado para UI
+          const meta = getFormMeta(FORM_ID, userId);
+          if (meta) {
+            console.log('Metadatos recuperados proactivamente:', meta);
+            setStep(meta.currentStep || 1);
+            setLastSaved(new Date(meta.lastUpdated));
+          }
+          
+          // Actualizar referencia para evitar guardados innecesarios
+          lastSavedDataRef.current = JSON.stringify({
+            ...savedData,
+            images: [],
+            documents: []
+          });
+          
+          // Mostrar mensaje de éxito brevemente
+          setRecoverySuccess(true);
+          setTimeout(() => setRecoverySuccess(false), 3000);
+          
+          console.log('Recuperación proactiva completada con éxito');
+        }
+      } catch (error) {
+        console.error('Error en recuperación proactiva:', error);
+      }
+    }
+  }, [userId, initialData, form]);
   
   // Gestionar avance al siguiente paso
   const handleNextStep = async () => {
@@ -177,14 +617,98 @@ export function CarListingForm({
         return;
       }
       
-      setStep(s => s + 1);
+      // Solo guardar explícitamente si no hay un guardado pendiente
+      if (userId && !pendingSave) {
+        const currentFormData = {
+          ...form.getValues(),
+          images: [],
+          documents: []
+        };
+      
+        // Indicar que estamos guardando
+        setIsAutoSaving(true);
+        
+        // Convertir a cadena para comparar con el último guardado
+        const currentDataString = JSON.stringify(currentFormData);
+        
+        // Solo guardar si los datos han cambiado
+        if (currentDataString !== lastSavedDataRef.current) {
+          console.log('Guardando datos antes de avanzar al siguiente paso');
+          
+          // Guardar los datos
+          safeSaveFormData(currentFormData, {
+            userId,
+            currentStep: step + 1, // Guardar con el paso al que vamos a avanzar
+            filesMeta: prepareFilesMeta(),
+            formVersion: FORM_VERSION
+          });
+          
+          // Actualizar la referencia de datos
+          lastSavedDataRef.current = currentDataString;
+          
+          // Actualizar estado de guardado
+          setLastSaved(new Date());
+        } else {
+          console.log('Los datos no han cambiado, solo actualizando el paso');
+          // Solo actualizar el paso
+          updateFormStep(FORM_ID, step + 1, userId);
+        }
+        
+        // Ocultar indicador de guardado después de un momento
+        setTimeout(() => setIsAutoSaving(false), 1000);
+      }
+      
+      // Avanzar al siguiente paso
+      setStep(current => current + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
   
   // Gestionar retroceso al paso anterior
   const handlePreviousStep = () => {
-    setStep(s => s - 1);
+    // Solo guardar explícitamente si no hay un guardado pendiente
+    if (userId && !pendingSave) {
+      const currentFormData = {
+        ...form.getValues(),
+        images: [],
+        documents: []
+      };
+      
+      // Convertir a cadena para comparar con el último guardado
+      const currentDataString = JSON.stringify(currentFormData);
+      
+      // Solo guardar si los datos han cambiado
+      if (currentDataString !== lastSavedDataRef.current) {
+        // Indicar que estamos guardando
+        setIsAutoSaving(true);
+        
+        console.log('Guardando datos antes de retroceder al paso anterior');
+        
+        // Guardar los datos
+        safeSaveFormData(currentFormData, {
+          userId,
+          currentStep: Math.max(1, step - 1), // Guardar con el paso al que vamos a retroceder
+          filesMeta: prepareFilesMeta(),
+          formVersion: FORM_VERSION
+        });
+        
+        // Actualizar la referencia de datos
+        lastSavedDataRef.current = currentDataString;
+        
+        // Actualizar estado de guardado
+        setLastSaved(new Date());
+        
+        // Ocultar indicador de guardado después de un momento
+        setTimeout(() => setIsAutoSaving(false), 1000);
+      } else {
+        console.log('Los datos no han cambiado, solo actualizando el paso');
+        // Solo actualizar el paso
+        updateFormStep(FORM_ID, Math.max(1, step - 1), userId);
+      }
+    }
+    
+    // Retroceder al paso anterior
+    setStep(current => Math.max(1, current - 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
@@ -299,10 +823,21 @@ export function CarListingForm({
     }
   };
   
+  // Renderizar el componente
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('sell.listing.form.step' + step + 'Title')}</CardTitle>
+        <CardTitle>{t(`sell.listing.form.step${step}Title`)}</CardTitle>
+        
+        {/* Indicador de recuperación exitosa */}
+        {recoverySuccess && (
+          <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-2 my-2 rounded">
+            <div className="flex items-center">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              <span>Datos del formulario recuperados correctamente</span>
+            </div>
+          </div>
+        )}
         
         {/* Indicador de progreso */}
         <div className="mt-4">
@@ -319,7 +854,7 @@ export function CarListingForm({
             <span className={`text-xs sm:text-sm font-medium ${step >= 4 ? 'text-primary' : 'text-muted-foreground'}`}>
               {t('sell.listing.form.step4Title')}
             </span>
-            <span className={`text-xs sm:text-sm font-medium ${step >= 5 ? 'text-primary' : 'text-muted-foreground'}`}>
+            <span className={`text-xs sm:text-sm font-medium ${step === 5 ? 'text-primary' : 'text-muted-foreground'}`}>
               {t('sell.listing.form.step5Title')}
             </span>
           </div>
@@ -329,6 +864,16 @@ export function CarListingForm({
               style={{ width: `${(step / 5) * 100}%` }}
             ></div>
           </div>
+          
+          {/* Indicador de guardado automático */}
+          {userId && (
+            <div className="flex justify-end mt-2">
+              <AutoSaveIndicator 
+                status={isAutoSaving ? 'saving' : pendingSave ? 'saving' : lastSaved ? 'saved' : 'idle'}
+                lastSaveTime={lastSaved ? lastSaved.getTime() : undefined}
+              />
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -516,7 +1061,7 @@ export function CarListingForm({
                           type="number" 
                           placeholder={t('sell.listing.form.mileagePlaceholder')} 
                           {...field}
-                          onChange={e => field.onChange(e.target.valueAsNumber)}
+                          onChange={e => field.onChange(e.target.valueAsNumber || 0)}
                         />
                       </FormControl>
                       <FormMessage />

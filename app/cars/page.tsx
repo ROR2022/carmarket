@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-//import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { CarCard } from '@/components/car/car-card';
 import { CarFilters } from '@/components/car/car-filters';
 import { CarPagination } from '@/components/car/car-pagination';
 import { useTranslation } from '@/utils/translation-context';
-import { Car, CarFilters as CarFiltersType, PaginationInfo, SortOption } from '@/types/car';
+import { Car, CarFilters as CarFiltersType, PaginationInfo, SortOption, CarCategory } from '@/types/car';
 import { 
   Select,
   SelectContent,
@@ -19,7 +19,8 @@ import { CatalogService } from '@/services/catalog';
 
 export default function CarsPage() {
   const { t } = useTranslation();
-  //const searchParams = useSearchParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   
   // Estados
   const [loading, setLoading] = useState(true);
@@ -33,7 +34,27 @@ export default function CarsPage() {
     hasNext: false,
     hasPrev: false
   });
-  const [filters, setFilters] = useState<CarFiltersType>({});
+  
+  // Inicializar filtros desde parámetros de URL si existen
+  const initialFilters = React.useMemo(() => {
+    const searchTerm = searchParams.get('searchTerm');
+    const brand = searchParams.get('brand');
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
+    const category = searchParams.get('category');
+    
+    const filters: CarFiltersType = {};
+    
+    if (searchTerm) filters.searchTerm = searchTerm;
+    if (brand) filters.brands = [brand];
+    if (category) filters.categories = [category as CarCategory];
+    if (minPrice) filters.minPrice = parseInt(minPrice);
+    if (maxPrice) filters.maxPrice = parseInt(maxPrice);
+    
+    return filters;
+  }, [searchParams]);
+  
+  const [filters, setFilters] = useState<CarFiltersType>(initialFilters);
   const [sortOption, setSortOption] = useState<SortOption>('created_desc');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [availableBrands, setAvailableBrands] = useState<string[]>([]);
@@ -68,6 +89,14 @@ export default function CarsPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
+  
+  // Efecto para inicializar los filtros desde URL al montar el componente
+  useEffect(() => {
+    // Solo aplicar los filtros iniciales si hay algún parámetro
+    if (Object.keys(initialFilters).length > 0) {
+      userInitiatedChange.current = true;
+    }
+  }, [initialFilters]);
   
   // Cargar marcas disponibles
   useEffect(() => {
@@ -176,6 +205,21 @@ export default function CarsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
+  // Función para actualizar la URL con los filtros actuales
+  const updateUrlWithFilters = (newFilters: CarFiltersType) => {
+    const params = new URLSearchParams();
+    
+    if (newFilters.searchTerm) params.set('searchTerm', newFilters.searchTerm);
+    if (newFilters.brands?.length) params.set('brand', newFilters.brands[0]);
+    if (newFilters.categories?.length) params.set('category', newFilters.categories[0]);
+    if (newFilters.minPrice) params.set('minPrice', newFilters.minPrice.toString());
+    if (newFilters.maxPrice) params.set('maxPrice', newFilters.maxPrice.toString());
+    
+    // Actualizar la URL sin recargar la página
+    const url = params.toString() ? `?${params.toString()}` : '';
+    router.push(`/cars${url}`, { scroll: false });
+  };
+  
   // Aplicar filtros
   const handleApplyFilters = (newFilters: CarFiltersType) => {
     // Marcar que este es un cambio iniciado por el usuario
@@ -186,6 +230,9 @@ export default function CarsPage() {
       ...prev,
       currentPage: 1  // Volver a la primera página al aplicar filtros
     }));
+    
+    // Actualizar la URL con los nuevos filtros
+    updateUrlWithFilters(newFilters);
   };
   
   // Limpiar filtros
@@ -198,6 +245,9 @@ export default function CarsPage() {
       ...prev,
       currentPage: 1
     }));
+    
+    // Limpiar la URL
+    router.push('/cars', { scroll: false });
   };
   
   // Gestionar cambio de ordenamiento
@@ -249,6 +299,11 @@ export default function CarsPage() {
           <div className="flex justify-between items-center mb-6">
             <p className="text-muted-foreground">
               {pagination.totalItems} {pagination.totalItems === 1 ? 'vehículo' : 'vehículos'} encontrados
+              {filters.searchTerm && (
+                <span className="ml-1">
+                  {t('cars.for_search')} &ldquo;<span className="font-medium">{filters.searchTerm}</span>&rdquo;
+                </span>
+              )}
             </p>
             
             <div className="flex items-center gap-2">

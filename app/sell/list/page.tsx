@@ -7,12 +7,17 @@ import { ListingFormData } from '@/types/listing';
 import { CarCategory, Transmission, FuelType } from '@/types/car';
 import { useTranslation } from '@/utils/translation-context';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/utils/auth-hooks';
 import { ListingService } from '@/services/listings';
 import { StorageService } from '@/services/storage';
+import { FormRecoveryDialog } from '@/components/sell/form-recovery-dialog';
+import { useFormPersistence } from '@/utils/hooks/useFormPersistence';
+
+const FORM_ID = 'car-listing-form';
+const FORM_VERSION = '1.0';
 
 export default function ListingPage() {
   const { t } = useTranslation();
@@ -26,6 +31,25 @@ export default function ListingPage() {
   const [initialData, setInitialData] = useState<Partial<ListingFormData> | undefined>(undefined);
   const [pageTitle, setPageTitle] = useState<string>(t('sell.listing.pageTitle'));
   const [pageSubtitle, setPageSubtitle] = useState<string>(t('sell.listing.pageSubtitle'));
+  const [resetForm, setResetForm] = useState<number>(0); // Contador para forzar el reinicio del formulario
+  
+  // Usar nuestro hook personalizado para manejar la persistencia
+  const {
+    persistedData,
+    formMeta,
+    showRecoveryDialog,
+    setShowRecoveryDialog,
+    handleRecoverForm,
+    handleDiscardForm,
+    calculateProgress,
+    saveFormData: savePersistedFormData,
+    isInitialized
+  } = useFormPersistence<Partial<ListingFormData>>({
+    formId: FORM_ID,
+    userId: user?.id,
+    formVersion: FORM_VERSION,
+    debugMode: true
+  });
 
   // Cargar datos del anuncio si estamos editando
   useEffect(() => {
@@ -174,6 +198,9 @@ export default function ListingPage() {
           title: t('sell.listing.form.listingPublished'),
           description: 'ID: ' + listingId,
         });
+        
+        // Limpiar datos guardados del formulario ya que se ha enviado correctamente
+        await handleDiscardForm();
       }
       
       // Redirigir a la página de mis anuncios
@@ -216,6 +243,12 @@ export default function ListingPage() {
         description: 'ID: ' + listingId,
       });
       
+      // Limpiar datos guardados del formulario ya que se ha guardado como borrador
+      await handleDiscardForm();
+      
+      // Redirigir a la página de mis anuncios
+      router.push('/sell/my-listings');
+      
     } catch (error) {
       console.error('Error al guardar borrador:', error);
       toast({
@@ -239,6 +272,38 @@ export default function ListingPage() {
       title: 'Vista previa',
       description: 'Función de vista previa en desarrollo'
     });
+  };
+
+  // Función para guardar datos del formulario durante la edición
+  const handleAutoSave = (formData: Partial<ListingFormData>, currentStep: number) => {
+    if (user && !editListingId) {
+      savePersistedFormData(formData, currentStep);
+    }
+  };
+
+  // Manejar reinicio del formulario
+  const handleResetForm = async () => {
+    if (confirm('¿Estás seguro de que deseas descartar todos los cambios y comenzar un formulario nuevo? Esta acción no se puede deshacer.')) {
+      try {
+        // Descartar todos los datos guardados
+        await handleDiscardForm();
+        
+        // Forzar el reinicio del formulario incrementando el contador
+        setResetForm(prev => prev + 1);
+        
+        toast({
+          title: 'Formulario reiniciado',
+          description: 'Todos los cambios han sido descartados. Puedes comenzar de nuevo.'
+        });
+      } catch (error) {
+        console.error('Error al reiniciar el formulario:', error);
+        toast({
+          title: 'Error',
+          description: 'No se pudieron descartar los cambios. Por favor intenta de nuevo.',
+          variant: 'destructive'
+        });
+      }
+    }
   };
 
   // Si está cargando la autenticación o los datos del anuncio, mostrar spinner
@@ -282,18 +347,44 @@ export default function ListingPage() {
         <p className="max-w-[800px] text-muted-foreground md:text-xl">
           {pageSubtitle}
         </p>
+        
+        {/* Botón para comenzar un formulario limpio, solo mostrar si no estamos editando */}
+        {!editListingId && isInitialized && (
+          <Button 
+            variant="outline" 
+            onClick={handleResetForm}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Comenzar formulario limpio
+          </Button>
+        )}
       </div>
       
       <div className="max-w-4xl mx-auto">
         <CarListingForm 
+          key={`form-${resetForm}`} // Usar la key para forzar el remontaje del componente
           onSubmit={handleSubmit}
           onSaveDraft={!editListingId ? handleSaveDraft : undefined}
           onPreview={handlePreview}
-          initialData={initialData}
+          initialData={editListingId ? initialData : (persistedData && resetForm === 0) ? persistedData : undefined}
           isSubmitting={isSubmitting}
           isSavingDraft={isSavingDraft}
+          userId={user?.id}
+          onAutoSave={handleAutoSave}
+          currentStep={formMeta?.currentStep}
         />
       </div>
+      
+      {/* Diálogo de recuperación */}
+      <FormRecoveryDialog
+        open={showRecoveryDialog}
+        onOpenChange={setShowRecoveryDialog}
+        onRecover={() => handleRecoverForm(persistedData)}
+        onDiscard={handleDiscardForm}
+        lastUpdated={formMeta?.lastUpdated || Date.now()}
+        progress={calculateProgress()}
+      />
     </div>
   );
 } 

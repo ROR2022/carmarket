@@ -61,4 +61,33 @@ export function formatRelativeDate(isoDate: string): string {
 export function capitalize(str: string): string {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Formatea un timestamp como tiempo relativo (hace X minutos, segundos, etc.)
+ */
+export function formatRelativeTime(timestamp: number): string {
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  
+  // Menos de un minuto
+  if (diffMs < 60 * 1000) {
+    return 'hace unos segundos';
+  }
+  
+  // Minutos
+  const minutes = Math.floor(diffMs / (60 * 1000));
+  if (minutes < 60) {
+    return `hace ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+  }
+  
+  // Horas
+  const hours = Math.floor(diffMs / (60 * 60 * 1000));
+  if (hours < 24) {
+    return `hace ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+  }
+  
+  // Días
+  const days = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  return `hace ${days} ${days === 1 ? 'día' : 'días'}`;
 } 
