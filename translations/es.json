@@ -6,13 +6,24 @@
     "error": "Error",
     "back_to_list": "Volver a la lista",
     "browse_all": "Explorar todos los autos",
-    "back_to_all_cars": "Volver a todos los autos"
+    "back_to_all_cars": "Volver a todos los autos",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "clear": "Limpiar",
+    "sending": "Enviando...",
+    "success": "Éxito",
+    "warning": "Advertencia",
+    "info": "Información"
   },
   "navbar": {
     "buy": "Comprar",
-    "allCars": "Todos los Autos",
+    "allCars": "Todos los autos",
     "cars": "Autos",
-    "browseCarsDescription": "Explore nuestro inventario completo de autos usados de calidad",
+    "browseCarsDescription": "Explora nuestro inventario completo de autos usados de calidad",
     "sedans": "Sedanes",
     "sedansDescription": "Autos cómodos y eficientes para conducción diaria",
     "suvs": "SUVs",
@@ -20,24 +31,28 @@
     "hatchbacks": "Hatchbacks",
     "hatchbacksDescription": "Autos compactos y versátiles con acceso por puerta trasera",
     "sell": "Vender",
-    "financing": "Financiación",
-    "aboutUs": "Nosotros",
-    "login": "Iniciar sesión",
+    "sellYourCarDescription": "Publica tu vehículo en nuestra plataforma y comienza a venderlo hoy mismo",
+    "financing": "Financiamiento",
+    "aboutUs": "Sobre Nosotros",
+    "login": "Ingresar",
     "register": "Registrarse",
-    "logout": "Cerrar sesión",
+    "logout": "Cerrar Sesión",
     "buyCars": "Comprar Autos",
-    "sellYourCar": "Vende tu Auto"
+    "sellYourCar": "Vende tu Auto",
+    "myListings": "Mis Anuncios",
+    "myListingsDescription": "Gestiona tus anuncios y controla el estado de tus vehículos",
+    "messages": "Mensajes"
   },
   "homePage": {
     "hero": {
       "title": "Encuentra tu auto perfecto",
-      "subtitle": "Explore nuestra selección de autos usados con condición garantizada",
+      "subtitle": "Explora nuestra selección de autos usados con condición garantizada",
       "searchPlaceholder": "Buscar por marca, modelo o características",
       "searchButton": "Buscar Autos"
     },
     "cta": {
       "title": "¿Listo para encontrar el auto de tus sueños?",
-      "subtitle": "Explore nuestro amplio inventario de autos usados certificados con informes detallados de historial y calidad garantizada.",
+      "subtitle": "Explora nuestro amplio inventario de autos usados certificados con informes de historial detallados y calidad garantizada.",
       "browseAllCars": "Ver Todos los Autos",
       "sellYourCar": "Vende tu Auto"
     },
@@ -150,10 +165,25 @@
     "disclaimer": {
       "title": "Aviso",
       "text": "La información y las especificaciones proporcionadas para este vehículo son a modo ilustrativo. Para una información más precisa, le recomendamos verificar el vehículo directamente con el vendedor."
+    },
+    "contactData": {
+      "title": "Contactar al vendedor",
+      "regarding": "Consulta sobre",
+      "subject": "Asunto",
+      "message": "Mensaje",
+      "message_placeholder": "Escribe tu mensaje aquí...",
+      "min_chars": "El mensaje debe tener al menos 20 caracteres",
+      "include_phone": "Incluir mi número de teléfono en el mensaje",
+      "send": "Enviar mensaje",
+      "message_too_short": "El mensaje es demasiado corto. Por favor, proporciona más detalles.",
+      "error_sending": "Error al enviar el mensaje. Por favor, intenta de nuevo.",
+      "success_title": "Mensaje enviado",
+      "success_description": "Tu mensaje ha sido enviado correctamente. El vendedor se pondrá en contacto contigo pronto."
     }
   },
   "categories": {
     "sedan": "Sedán",
+    "sedan_description": "Autos cómodos y eficientes para conducción diaria",
     "suv": "SUV",
     "suv_description": "Vehículos espaciosos con mayor capacidad de carga",
     "hatchback": "Hatchback",
@@ -206,7 +236,7 @@
     "browseCars": "Explorar Autos",
     "sellYourCar": "Vende tu Auto",
     "financingOptions": "Opciones de Financiación",
-    "aboutUs": "Nosotros",
+    "aboutUs": "Sobre Nosotros",
     "support": "Soporte",
     "contactUs": "Contáctenos",
     "faq": "Preguntas Frecuentes",
@@ -262,61 +292,53 @@
     }
   },
   "about": {
-    "title": "Acerca de Nosotros",
-    "badge": "Acerca de Nosotros",
-    "subtitle": "Descubre quiénes somos y por qué elegirnos para tu próximo auto.",
+    "title": "Tu Mercado de Autos de Confianza",
+    "badge": "Sobre Nosotros",
+    "subtitle": "Estamos dedicados a proporcionar la mejor experiencia de compra y venta de autos para nuestros usuarios.",
     "mission": {
       "title": "Nuestra Misión",
-      "description": "Nuestro objetivo es proporcionar a nuestros clientes la mejor experiencia de compra de autos usados, ofreciendo vehículos de alta calidad, precios competitivos y un servicio al cliente excepcional.",
+      "description": "Aspiramos a simplificar el proceso de compra de autos y proporcionar información transparente para todos los usuarios.",
       "features": {
         "performance": {
-          "title": "Rendimiento",
-          "description": "Ofrecemos autos de alta calidad con rendimiento excepcional."
+          "title": "Alto Rendimiento",
+          "description": "Aplicación rápida y receptiva para una experiencia de usuario optimizada"
         },
         "security": {
-          "title": "Seguridad",
-          "description": "Ofrecemos autos de alta calidad con rendimiento excepcional."
+          "title": "Máxima Seguridad",
+          "description": "Encriptación avanzada y procesamiento seguro de pagos"
         }
       }
     },
     "tech": {
-      "title": "Tecnologías Utilizadas",
-      "subtitle": "Descubre las tecnologías que utilizamos para ofrecerte la mejor experiencia de compra de autos usados.",
-      "technologies": {
-        "nextjs": "Next.js",
-        "supabase": "Supabase",
-        "mercadopago": "MercadoPago",
-        "tailwind": "TailwindCSS"
-      }
+      "title": "Nuestra Tecnología"
     }
   },
   "cookies": {
-    "title": "Cookies",
-    "subtitle": "Descubre cómo utilizamos cookies para mejorar tu experiencia en nuestro sitio web.",
+    "title": "Política de Cookies",
+    "subtitle": "Información sobre cómo utilizamos cookies en nuestro sitio web",
     "whatAreCookies": {
       "title": "¿Qué son las cookies?",
-      "subtitle": "Las cookies son pequeños archivos de texto que se almacenan en tu navegador cuando visitas un sitio web.",
-      "description": "Utilizamos cookies para mejorar tu experiencia en nuestro sitio web. Si no estás de acuerdo, puedes desactivar las cookies en tu navegador."
+      "subtitle": "Aprende sobre las cookies y cómo funcionan",
+      "description": "Las cookies son pequeños archivos de texto almacenados en tu dispositivo que nos ayudan a proporcionarte una mejor experiencia de navegación."
     },
     "types": {
       "title": "Tipos de cookies",
-      "subtitle": "Existen diferentes tipos de cookies que se utilizan en nuestro sitio web.",
-      "description": "Utilizamos cookies para mejorar tu experiencia en nuestro sitio web. Si no estás de acuerdo, puedes desactivar las cookies en tu navegador.",
+      "subtitle": "Diferentes tipos de cookies que utilizamos",
       "essential": {
         "title": "Cookies esenciales",
-        "description": "Necesarias para el funcionamiento del sitio web."
+        "description": "Necesarias para el funcionamiento del sitio web"
       },
       "analytics": {
         "title": "Cookies de análisis",
-        "description": "Utilizadas para recopilar información sobre el uso del sitio web."
+        "description": "Nos ayudan a entender cómo los visitantes interactúan con nuestro sitio web"
       },
       "functional": {
         "title": "Cookies funcionales",
-        "description": "Utilizadas para recordar tus preferencias y mejorar tu experiencia."
+        "description": "Habilitan funcionalidades mejoradas y personalización"
       },
       "marketing": {
         "title": "Cookies de marketing",
-        "description": "Utilizadas para mostrar publicidad relevante."
+        "description": "Rastrean tu actividad para mostrar anuncios dirigidos"
       }
     },
     "usage": {
@@ -324,10 +346,10 @@
       "description": "Utilizamos cookies para mejorar tu experiencia en nuestro sitio web. Si no estás de acuerdo, puedes desactivar las cookies en tu navegador.",
       "subtitle": "Utilizamos cookies para mejorar tu experiencia en nuestro sitio web. Si no estás de acuerdo, puedes desactivar las cookies en tu navegador.",
       "items": {
-        "improve": "Mejora la experiencia de usuario",
-        "analyze": "Analiza el uso del sitio web",
-        "personalize": "Personaliza el contenido",
-        "remember": "Recuerda tus preferencias"
+        "improve": "Mejorar la experiencia del usuario",
+        "analyze": "Analizar el uso del sitio web",
+        "personalize": "Personalizar contenido",
+        "remember": "Recordar tus preferencias"
       }
     },
     "management": {
@@ -340,6 +362,118 @@
         "thirdParty": "En terceros"
       }
     }
+  },
+  "types": {
+    "essential": {
+      "title": "Cookies Esenciales",
+      "description": "Requeridas para que el sitio web funcione correctamente",
+      "required": true
+    },
+    "analytics": {
+      "title": "Cookies de Análisis",
+      "description": "Nos ayudan a entender cómo los visitantes interactúan con nuestro sitio web",
+      "required": false
+    },
+    "functional": {
+      "title": "Cookies Funcionales",
+      "description": "Habilitan funcionalidades mejoradas y personalización",
+      "required": false
+    },
+    "marketing": {
+      "title": "Cookies de Marketing",
+      "description": "Rastrean tu actividad para mostrar anuncios dirigidos",
+      "required": false
+    }
+  },
+  "messages": {
+    "title": "Mensajes",
+    "description": "Ver y gestionar tus conversaciones con compradores y vendedores",
+    "inbox": "Bandeja de entrada",
+    "sent": "Enviados",
+    "inbox_description": "Mensajes que has recibido de otros",
+    "sent_description": "Mensajes que has enviado a otros",
+    "archived_description": "Mensajes que has archivado",
+    "refresh": "Actualizar",
+    "subject": "Asunto",
+    "sender": "De",
+    "recipient": "Para",
+    "listing": "Anuncio",
+    "date": "Fecha",
+    "actions": "Acciones",
+    "no_subject": "Sin asunto",
+    "view_message": "Ver mensaje",
+    "mark_as_read": "Marcar como leído",
+    "mark_as_unread": "Marcar como no leído",
+    "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "delete": "Eliminar",
+    "delete_confirm": "¿Estás seguro de que quieres eliminar este mensaje? Esta acción no se puede deshacer.",
+    "delete_with_related_confirm": "Este mensaje tiene respuestas asociadas. ¿Deseas eliminar también todos los mensajes relacionados? Esta acción no se puede deshacer.",
+    "delete_conversation_confirm": "¿Estás seguro de que quieres eliminar toda esta conversación? Esta acción no se puede deshacer.",
+    "empty_inbox_title": "No hay mensajes en la bandeja de entrada",
+    "empty_inbox_description": "No tienes ningún mensaje en tu bandeja de entrada.",
+    "empty_sent_title": "No hay mensajes enviados",
+    "empty_sent_description": "Aún no has enviado ningún mensaje.",
+    "empty_archived_title": "No hay mensajes archivados",
+    "empty_archived_description": "No tienes ningún mensaje archivado.",
+    "try_again": "Intentar de nuevo",
+    "error_loading": "Error al cargar los mensajes",
+    "error_refreshing": "Error al actualizar los mensajes",
+    "loading": "Cargando mensajes...",
+    "not_found": "No se pudo encontrar el mensaje que buscas",
+    "not_found_title": "Mensaje no encontrado",
+    "back_to_inbox": "Volver a la bandeja de entrada",
+    "from_user": "De: {name}",
+    "to_user": "Para: {name}",
+    "archived": "Mensaje archivado",
+    "unarchived": "Mensaje desarchivado",
+    "deleted": "Mensaje eliminado",
+    "error": "Error",
+    "action_error": "Ocurrió un error al realizar esta acción",
+    "archive_success": "El mensaje ha sido archivado correctamente",
+    "unarchive_success": "El mensaje ha sido desarchivado correctamente",
+    "delete_success": "El mensaje ha sido eliminado correctamente",
+    "deleted_message": "Mensaje eliminado",
+    "about_listing": "Sobre este anuncio",
+    "listing_info": "Información sobre el vehículo en esta conversación",
+    "view_listing": "Ver anuncio",
+    "original_message": "Mensaje original",
+    "new_message": "Mensaje nuevo",
+    "reply": "Responder",
+    "reply_description": "Envía una respuesta a este mensaje",
+    "reply_placeholder": "Escribe tu respuesta aquí...",
+    "min_characters": "Mínimo {count} caracteres requeridos",
+    "send_reply": "Enviar respuesta",
+    "clear": "Limpiar",
+    "reply_error": "Error al enviar respuesta",
+    "reply_min_length": "La respuesta debe tener al menos 20 caracteres",
+    "reply_sent": "Respuesta enviada",
+    "reply_success": "Tu respuesta ha sido enviada correctamente",
+    "error_sending": "Error al enviar tu respuesta. Por favor, intenta de nuevo.",
+    "vehicle": "Vehículo",
+    "phone_number": "Número de teléfono",
+    "you": "Tú",
+    "conversations": "Conversaciones",
+    "conversations_description": "Tus conversaciones con compradores y vendedores",
+    "view_as_conversations": "Ver como Conversaciones",
+    "view_as_traditional": "Ver como Mensajes",
+    "no_conversations": "Aún no tienes conversaciones",
+    "start_conversation": "Inicia una conversación contactando a un vendedor",
+    "start_conversation_description": "Aquí verás tus conversaciones con vendedores y compradores",
+    "conversation_archived": "La conversación ha sido archivada correctamente",
+    "conversation_deleted": "La conversación ha sido eliminada correctamente",
+    "from_buyer": "De Comprador",
+    "to_seller": "Para Vendedor",
+    "back": "Volver",
+    "no_messages": "No hay mensajes en esta conversación",
+    "unread": "No leído",
+    "updated": "Actualizado",
+    "mark_as_read_success": "Mensaje marcado como leído correctamente",
+    "mark_as_unread_success": "Mensaje marcado como no leído correctamente",
+    "from": "De",
+    "to": "Para",
+    "unread_singular": "nuevo",
+    "unread_plural": "nuevos"
   },
   "privacy": {
     "title": "Política de Privacidad",
@@ -684,6 +818,8 @@
     "listing": {
       "pageTitle": "Crear anuncio",
       "pageSubtitle": "Completa la información para publicar tu vehículo",
+      "editTitle": "Editar anuncio",
+        "editSubtitle": "Edita la información de tu vehículo para actualizar tu anuncio",
       "form": {
         "step1Title": "Datos básicos",
         "step2Title": "Características técnicas",
@@ -766,7 +902,8 @@
         "sold": "Vendidos",
         "expired": "Expirados",
         "draft": "Borradores",
-        "rejected": "Rechazados"
+        "rejected": "Rechazados",
+        "approved": "Aprobados"
       },
       "table": {
         "vehicle": "Vehículo",
@@ -782,7 +919,8 @@
         "sold": "Vendido",
         "expired": "Expirado",
         "draft": "Borrador",
-        "rejected": "Rechazado"
+        "rejected": "Rechazado",
+        "approved": "Aprobado"
       },
       "actions": {
         "view": "Ver anuncio",

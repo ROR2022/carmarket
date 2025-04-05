@@ -86,21 +86,43 @@ export function CarCard({ car, isFavorite = false, onToggleFavorite }: CarCardPr
           <p className="text-2xl font-bold text-primary mt-1">
             {formatCurrency(car.price)}
           </p>
-          <div className="grid grid-cols-2 gap-2 mt-3 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <span className="font-medium">{t('cars.carCard.mileage')}:</span> 
+          
+          <div className="mt-3 flex flex-wrap gap-3">
+            <div className="flex items-center gap-1.5 bg-secondary/30 px-2 py-1 rounded-md">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2">
+                <path d="M12 2v2M12 14v2M22 12h-2M14 12h-2M8 12H6M2 12h2M7 7 5.5 5.5M17 7l1.5-1.5M17 17l1.5 1.5M7 17l-1.5 1.5" />
+              </svg>
               <span>{car.mileage.toLocaleString()} km</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="font-medium">{t('cars.carCard.transmission')}:</span> 
+            
+            <div className="flex items-center gap-1.5 bg-secondary/30 px-2 py-1 rounded-md">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2">
+                <circle cx="7" cy="5" r="2" />
+                <circle cx="17" cy="5" r="2" />
+                <path d="M14 13h1a3 3 0 0 1 0 6h-1v-6ZM6 13v6h1a3 3 0 0 0 0-6H6Z" />
+                <rect width="18" height="14" x="3" y="3" rx="2" />
+              </svg>
               <span>{car.transmission}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="font-medium">{t('cars.carCard.fuel')}:</span> 
+            
+            <div className="flex items-center gap-1.5 bg-secondary/30 px-2 py-1 rounded-md">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2">
+                <path d="M14 12c0 1.1-2 2-2 2s-2-.9-2-2 2-2 2-2 2 .9 2 2z" />
+                <path d="M12 20s8-3 8-8-8-8-8-8-8 3-8 8 8 8 8 8z" />
+                <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
+                <path d="M12 20v-8" />
+                <path d="M12 12H4" />
+              </svg>
               <span>{car.fuelType}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="font-medium">{t('cars.carCard.year')}:</span> 
+            
+            <div className="flex items-center gap-1.5 bg-secondary/30 px-2 py-1 rounded-md">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2">
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M9 13h6" />
+                <path d="M9 17h6" />
+                <path d="M9 9h6" />
+              </svg>
               <span>{car.year}</span>
             </div>
           </div>

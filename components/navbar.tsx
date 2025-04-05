@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,15 +12,39 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
-import { Menu, X, LogOut } from "lucide-react"
+import { Menu, X, LogOut, MessageSquare } from "lucide-react"
 import { useTranslation } from "@/utils/translation-context"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { useAuth } from "@/utils/auth-hooks"
+import { MessageService } from "@/services/message"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const { t } = useTranslation()
-  const { isAuthenticated, signOut, loading } = useAuth()
+  const { isAuthenticated, signOut, loading, user } = useAuth()
+
+  // Obtener contador de mensajes no leídos
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!isAuthenticated || !user) return;
+      
+      try {
+        const count = await MessageService.getUnreadMessageCount(user.id);
+        setUnreadCount(count);
+      } catch (err) {
+        console.error('Error fetching unread count:', err);
+      }
+    };
+    
+    if (isAuthenticated && user) {
+      fetchUnreadCount();
+      
+      // Actualizar cada minuto
+      const interval = setInterval(fetchUnreadCount, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, user]);
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
@@ -96,9 +120,39 @@ export default function Navbar() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/sell" legacyBehavior passHref>
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>{t("navbar.sell")}</NavigationMenuLink>
-                  </Link>
+                  <NavigationMenuTrigger>{t("navbar.sell")}</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-3 p-4">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            href="/sell"
+                            className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                          >
+                            <div className="text-sm font-medium leading-none">{t("navbar.sellYourCar")}</div>
+                            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                              {t("navbar.sellYourCarDescription")}
+                            </p>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                      {isAuthenticated && (
+                        <li>
+                          <NavigationMenuLink asChild>
+                            <Link
+                              href="/sell/my-listings"
+                              className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                            >
+                              <div className="text-sm font-medium leading-none">{t("navbar.myListings")}</div>
+                              <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                                {t("navbar.myListingsDescription")}
+                              </p>
+                            </Link>
+                          </NavigationMenuLink>
+                        </li>
+                      )}
+                    </ul>
+                  </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
                   <Link href="/about" legacyBehavior passHref>
@@ -115,10 +169,23 @@ export default function Navbar() {
             {!loading && (
               <>
                 {isAuthenticated ? (
-                  <Button variant="outline" onClick={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    {t("navbar.logout")}
-                  </Button>
+                  <>
+                    <Button variant="ghost" asChild className="gap-2">
+                      <Link href="/messages">
+                        <MessageSquare className="h-4 w-4" />
+                        {t("navbar.messages")}
+                        {unreadCount > 0 && (
+                          <span className="ml-1 h-5 min-w-5 rounded-full bg-primary text-xs text-primary-foreground flex items-center justify-center">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </Link>
+                    </Button>
+                    <Button variant="outline" onClick={signOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      {t("navbar.logout")}
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Button variant="ghost" asChild>
@@ -153,9 +220,24 @@ export default function Navbar() {
             <Link href="/sell" className="py-2 text-lg" onClick={() => setIsMenuOpen(false)}>
               {t("navbar.sellYourCar")}
             </Link>
+            {isAuthenticated && (
+              <Link href="/sell/my-listings" className="py-2 text-lg" onClick={() => setIsMenuOpen(false)}>
+                {t("navbar.myListings")}
+              </Link>
+            )}
             <Link href="/about" className="py-2 text-lg" onClick={() => setIsMenuOpen(false)}>
               {t("navbar.aboutUs")}
             </Link>
+            {isAuthenticated && (
+              <Link href="/messages" className="py-2 text-lg flex items-center" onClick={() => setIsMenuOpen(false)}>
+                {t("navbar.messages")}
+                {unreadCount > 0 && (
+                  <span className="ml-2 h-5 min-w-5 rounded-full bg-primary text-xs text-primary-foreground flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
             <div className="pt-4 flex flex-col space-y-2">
               {!loading && (
                 <>

@@ -169,13 +169,14 @@ export const ListingService = {
   // Obtener todos los anuncios de un usuario
   async getUserListings(userId: string): Promise<Record<ListingStatus, CarListing[]>> {
     const supabase = createClient();
-    
+    console.log('iniciando getUserListings userId: ', userId);
     // Obtener todos los anuncios del usuario
     const { data: listings, error } = await supabase
       .from('listings')
       .select('*')
       .eq('seller_id', userId);
     
+    console.log('data recibida listings: ', listings);
     if (error) {
       console.error('Error fetching user listings:', error);
       throw new Error('Error al obtener los anuncios: ' + error.message);

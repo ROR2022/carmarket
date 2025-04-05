@@ -38,6 +38,37 @@ export default function CarsPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [availableBrands, setAvailableBrands] = useState<string[]>([]);
   
+  // Referencias para controlar la carga y los cambios de usuario
+  const initialLoadRef = React.useRef(false);
+  const userInitiatedChange = React.useRef(false);
+  const isVisibleRef = React.useRef(true);
+  
+  // Monitor de visibilidad del documento
+  useEffect(() => {
+    // Función para manejar cambios de visibilidad
+    const handleVisibilityChange = () => {
+      const isVisible = document.visibilityState === 'visible';
+      console.log('Visibility changed:', isVisible);
+      
+      // Si volvemos a la pestaña y la carga ya se completó anteriormente,
+      // no queremos que se vuelva a cargar automáticamente
+      if (isVisible && initialLoadRef.current) {
+        console.log('Page became visible again, preventing auto-reload');
+        userInitiatedChange.current = false;
+      }
+      
+      isVisibleRef.current = isVisible;
+    };
+    
+    // Agregar el listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Limpiar al desmontar
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
   // Cargar marcas disponibles
   useEffect(() => {
     const loadBrands = async () => {
@@ -55,6 +86,20 @@ export default function CarsPage() {
   // Cargar autos al iniciar o cambiar filtros/página
   useEffect(() => {
     const loadCars = async () => {
+      // Si ya se cargó inicialmente y no es un cambio iniciado por el usuario, no recargar
+      if (initialLoadRef.current && !userInitiatedChange.current) {
+        console.log('Skipping automatic reload - no user initiated change');
+        return;
+      }
+      
+      // Si la página no está visible, posponer la carga
+      if (!isVisibleRef.current) {
+        console.log('Page not visible, postponing load');
+        return;
+      }
+      
+      console.log('Loading cars with filters:', filters, 'page:', pagination.currentPage, 'sort:', sortOption);
+      
       setLoading(true);
       setError(null);
       
@@ -67,20 +112,61 @@ export default function CarsPage() {
         );
         
         setCars(result.cars);
-        setPagination(result.pagination);
+        
+        // Actualizar la paginación de manera selectiva para evitar ciclos
+        // Usamos una función para garantizar que estamos trabajando con el último estado
+        setPagination(prev => {
+          // Verificar si realmente hubo cambios para evitar actualizaciones innecesarias
+          if (
+            prev.totalPages === result.pagination.totalPages &&
+            prev.totalItems === result.pagination.totalItems &&
+            prev.hasNext === result.pagination.hasNext &&
+            prev.hasPrev === result.pagination.hasPrev
+          ) {
+            return prev; // No hay cambios reales, evitar actualización
+          }
+          
+          // Actualizar solo si hay cambios
+          return {
+            ...prev,
+            totalPages: result.pagination.totalPages,
+            totalItems: result.pagination.totalItems,
+            hasNext: result.pagination.hasNext,
+            hasPrev: result.pagination.hasPrev
+          };
+        });
+        
+        // Marcar que ya se realizó la carga inicial
+        initialLoadRef.current = true;
       } catch (err) {
         console.error('Error fetching cars:', err);
         setError(t('cars.error'));
       } finally {
         setLoading(false);
+        // Reiniciar el indicador de cambio iniciado por el usuario
+        userInitiatedChange.current = false;
       }
     };
     
-    loadCars();
+    // Ejecutar inmediatamente si tenemos un cambio iniciado por el usuario
+    if (userInitiatedChange.current) {
+      loadCars();
+    } 
+    // O con un pequeño retraso para evitar carreras de condición en actualizaciones rápidas
+    else {
+      const timer = setTimeout(() => {
+        loadCars();
+      }, 50);
+      
+      return () => clearTimeout(timer);
+    }
   }, [pagination.currentPage, pagination.pageSize, filters, sortOption, t]);
   
   // Gestionar cambios de página
   const handlePageChange = (page: number) => {
+    // Marcar que este es un cambio iniciado por el usuario
+    userInitiatedChange.current = true;
+    
     setPagination(prev => ({
       ...prev,
       currentPage: page
@@ -92,6 +178,9 @@ export default function CarsPage() {
   
   // Aplicar filtros
   const handleApplyFilters = (newFilters: CarFiltersType) => {
+    // Marcar que este es un cambio iniciado por el usuario
+    userInitiatedChange.current = true;
+    
     setFilters(newFilters);
     setPagination(prev => ({
       ...prev,
@@ -101,6 +190,9 @@ export default function CarsPage() {
   
   // Limpiar filtros
   const handleClearFilters = () => {
+    // Marcar que este es un cambio iniciado por el usuario
+    userInitiatedChange.current = true;
+    
     setFilters({});
     setPagination(prev => ({
       ...prev,
@@ -110,6 +202,9 @@ export default function CarsPage() {
   
   // Gestionar cambio de ordenamiento
   const handleSortChange = (value: string) => {
+    // Marcar que este es un cambio iniciado por el usuario
+    userInitiatedChange.current = true;
+    
     setSortOption(value as SortOption);
   };
   

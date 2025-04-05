@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,6 +39,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from '@/components/ui/use-toast';
 import { ListingService } from '@/services/listings';
+import { FaCarSide } from 'react-icons/fa';
 
 // Formatear fecha relativa
 const formatRelativeDate = (dateString: string) => {
@@ -49,12 +51,13 @@ const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   }).format(value);
 };
 
 export default function MyListingsPage() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [listings, setListings] = useState<Record<ListingStatus, CarListing[]>>({
     active: [],
@@ -64,68 +67,167 @@ export default function MyListingsPage() {
     draft: [],
     rejected: [],
     approved: [],
-    changes_requested: []
+    changes_requested: [],
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
+  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cargar anuncios del usuario
+  // Cargar anuncios del usuario (optimizado)
+  const loadUserListings = useCallback(async () => {
+    // Si no hay usuario o no está autenticado, no hacemos nada
+    if (!user?.id || !isAuthenticated) {
+      console.log('No se cargan anuncios: usuario o autenticación no disponible', { userId: user?.id, isAuthenticated });
+      return;
+    }
+    
+    // Si ya cargamos una vez, no volvemos a cargar
+    if (hasLoadedRef.current) {
+      console.log('Omitiendo carga redundante de anuncios, ya cargados previamente');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setLoadError(null);
+      console.log('Iniciando carga de anuncios del usuario:', user.id);
+      
+      // Establecer un timeout para evitar carga infinita
+      loadTimeoutRef.current = setTimeout(() => {
+        console.log('Timeout de carga alcanzado');
+        setLoading(false);
+        setLoadError('La carga tomó demasiado tiempo. Por favor, actualiza la página.');
+      }, 15000); // 15 segundos de timeout
+      
+      // Agregar control de errores para la llamada a getUserListings
+      if (!ListingService || typeof ListingService.getUserListings !== 'function') {
+        throw new Error('ListingService o getUserListings no disponible');
+      }
+      
+      console.log('Llamando a ListingService.getUserListings...');
+      const userListings = await ListingService.getUserListings(user.id);
+      console.log('Anuncios cargados exitosamente:', Object.keys(userListings).map(k => `${k}: ${userListings[k as ListingStatus].length}`));
+      
+      // Limpiar el timeout ya que la carga fue exitosa
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+      
+      setListings(userListings);
+      hasLoadedRef.current = true;
+    } catch (error) {
+      console.error('Error detallado cargando anuncios:', error);
+      // Error más descriptivo
+      let errorMessage = 'No se pudieron cargar tus anuncios. Por favor, intenta de nuevo.';
+      if (error instanceof Error) {
+        errorMessage += ` Error: ${error.message}`;
+      }
+      setLoadError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      // Asegurarnos de que siempre salimos del estado de carga
+      console.log('Finalizando proceso de carga de anuncios');
+      setLoading(false);
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+    }
+  }, [user?.id, isAuthenticated]);
+
+  // Efecto para cargar anuncios solo cuando tenemos un usuario autenticado y no hay una carga en progreso
   useEffect(() => {
-    const loadUserListings = async () => {
-      if (isAuthenticated && user && !authLoading) {
-        try {
-          setLoading(true);
-          const userListings = await ListingService.getUserListings(user.id);
-          setListings(userListings);
-        } catch (error) {
-          console.error('Error cargando anuncios:', error);
-          toast({
-            title: 'Error',
-            description: 'No se pudieron cargar tus anuncios. Por favor, intenta de nuevo.',
-            variant: 'destructive'
-          });
-        } finally {
-          setLoading(false);
-        }
+    console.log('useEffect evaluado:', {
+      isAuthenticated,
+      hasUser: !!user,
+      authLoading,
+      loading,
+      hasLoadedBefore: hasLoadedRef.current
+    });
+    
+    // Solo iniciar la carga cuando:
+    // 1. El usuario está autenticado
+    // 2. Tenemos un objeto user
+    // 3. La autenticación ya terminó de cargar
+    // 4. No hay una carga de anuncios en progreso
+    // 5. No hemos cargado los anuncios anteriormente
+    const shouldLoadListings = 
+      isAuthenticated && 
+      !!user && 
+      !authLoading && 
+      !loading && 
+      !hasLoadedRef.current;
+    
+    if (shouldLoadListings) {
+      console.log('Iniciando carga de anuncios desde useEffect');
+      loadUserListings();
+    }
+  }, [isAuthenticated, user, authLoading, loading, loadUserListings]);
+
+  // Limpieza al desmontar el componente
+  useEffect(() => {
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
       }
     };
-
-    loadUserListings();
-  }, [isAuthenticated, user, authLoading]);
+  }, []);
 
   // Eliminar un anuncio
   const handleDeleteListing = async () => {
     if (!selectedListingId || !user) return;
     
     try {
+      setIsDeleting(true);
+      // Mostrar indicador de carga
+      toast({
+        title: 'Procesando',
+        description: 'Eliminando anuncio...',
+      });
+      
       await ListingService.deleteListing(selectedListingId, user.id);
       
-      // Actualizar el estado local
-      const updatedListings = { ...listings };
-      const listingStatus = Object.keys(updatedListings).find((status) => 
-        updatedListings[status as ListingStatus].some(listing => listing.id === selectedListingId)
-      ) as ListingStatus;
-      
-      if (listingStatus) {
-        updatedListings[listingStatus] = updatedListings[listingStatus].filter(
-          listing => listing.id !== selectedListingId
-        );
-        setListings(updatedListings);
-      }
+      // Actualizar el estado local usando un callback para asegurar el estado más reciente
+      setListings(prevListings => {
+        const updatedListings = { ...prevListings };
+        const listingStatus = Object.keys(updatedListings).find((status) =>
+          updatedListings[status as ListingStatus].some(
+            (listing) => listing.id === selectedListingId,
+          ),
+        ) as ListingStatus;
+        
+        if (listingStatus) {
+          updatedListings[listingStatus] = updatedListings[listingStatus].filter(
+            (listing) => listing.id !== selectedListingId,
+          );
+        }
+        
+        return updatedListings;
+      });
       
       toast({
         title: 'Anuncio eliminado',
-        description: 'El anuncio ha sido eliminado correctamente'
+        description: 'El anuncio ha sido eliminado correctamente',
       });
     } catch (error) {
       console.error('Error eliminando anuncio:', error);
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el anuncio. Por favor, intenta de nuevo.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     } finally {
+      setIsDeleting(false);
       setDeleteConfirmOpen(false);
       setSelectedListingId(null);
     }
@@ -136,55 +238,78 @@ export default function MyListingsPage() {
     if (!user) return;
     
     try {
+      setActionLoading(listingId);
+      // Obtener el nombre del estado para el mensaje
+      const statusName =
+        {
+          active: 'activado',
+          sold: 'marcado como vendido',
+          draft: 'guardado como borrador',
+          expired: 'marcado como expirado',
+          pending: 'marcado como pendiente',
+          approved: 'aprobado',
+          rejected: 'rechazado',
+          changes_requested: 'marcado para revisión',
+        }[newStatus] || newStatus;
+      
+      // Mostrar indicador de carga
+      toast({
+        title: 'Procesando',
+        description: `Cambiando estado del anuncio a "${statusName}"...`,
+      });
+      
       // Llamar al servicio para cambiar el estado
       await ListingService.changeListingStatus(listingId, newStatus, user.id);
       
-      // Encontrar el anuncio y su estado actual
-      let currentStatus: ListingStatus | undefined;
-      let targetListing: CarListing | undefined;
-      
-      Object.entries(listings).forEach(([status, statusListings]) => {
-        const found = statusListings.find(listing => listing.id === listingId);
-        if (found) {
-          currentStatus = status as ListingStatus;
-          targetListing = found;
+      // Actualizar el estado local usando un callback para asegurar el estado más reciente
+      setListings(prevListings => {
+        const updatedListings = { ...prevListings };
+        
+        // Encontrar el anuncio y su estado actual
+        let currentStatus: ListingStatus | undefined;
+        let targetListing: CarListing | undefined;
+        
+        Object.entries(updatedListings).forEach(([status, statusListings]) => {
+          const found = statusListings.find((listing) => listing.id === listingId);
+          if (found) {
+            currentStatus = status as ListingStatus;
+            targetListing = found;
+          }
+        });
+        
+        if (currentStatus && targetListing) {
+          // Eliminar el anuncio de su estado actual
+          updatedListings[currentStatus] = updatedListings[currentStatus].filter(
+            (listing) => listing.id !== listingId,
+          );
+          
+          // Añadir el anuncio al nuevo estado
+          const updatedListing = { 
+            ...targetListing, 
+            status: newStatus,
+            updatedAt: new Date().toISOString(),
+          };
+          
+          // Añadir al nuevo estado
+          updatedListings[newStatus] = [...updatedListings[newStatus], updatedListing];
         }
+        
+        return updatedListings;
       });
       
-      if (currentStatus && targetListing) {
-        // Crear copia del estado actual
-        const updatedListings = { ...listings };
-        
-        // Eliminar el anuncio de su estado actual
-        updatedListings[currentStatus] = updatedListings[currentStatus].filter(
-          listing => listing.id !== listingId
-        );
-        
-        // Añadir el anuncio al nuevo estado
-        const updatedListing = { 
-          ...targetListing, 
-          status: newStatus,
-          updatedAt: new Date().toISOString() 
-        };
-        
-        // Añadir al nuevo estado
-        updatedListings[newStatus] = [...updatedListings[newStatus], updatedListing];
-        
-        // Actualizar estado
-        setListings(updatedListings);
-        
-        toast({
-          title: 'Estado actualizado',
-          description: `El anuncio ahora está ${newStatus === 'sold' ? 'marcado como vendido' : 'en estado ' + newStatus}`
-        });
-      }
+      toast({
+        title: 'Estado actualizado',
+        description: `El anuncio ha sido ${statusName} correctamente`,
+      });
     } catch (error) {
       console.error('Error cambiando estado:', error);
       toast({
         title: 'Error',
         description: 'No se pudo cambiar el estado del anuncio. Por favor, intenta de nuevo.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -193,55 +318,120 @@ export default function MyListingsPage() {
     if (!user) return;
     
     try {
-      // Primero encontramos el anuncio para saber su estado actual de destacado
+      setActionLoading(listingId);
+      
+      // Encontramos el anuncio y su estado actual usando un enfoque que no depende del estado
       let targetListing: CarListing | undefined;
       let listingStatus: ListingStatus | undefined;
+      let isFeatured = false;
       
-      Object.entries(listings).forEach(([status, statusListings]) => {
-        const found = statusListings.find(listing => listing.id === listingId);
-        if (found) {
-          targetListing = found;
-          listingStatus = status as ListingStatus;
-        }
+      // Usar callback para garantizar el estado más reciente
+      const findListing = (prevListings: Record<ListingStatus, CarListing[]>) => {
+        Object.entries(prevListings).forEach(([status, statusListings]) => {
+          const found = statusListings.find((listing) => listing.id === listingId);
+          if (found) {
+            targetListing = found;
+            listingStatus = status as ListingStatus;
+            isFeatured = found.isFeatured;
+          }
+        });
+      };
+      
+      // Ejecutar la búsqueda
+      setListings(prevListings => {
+        findListing(prevListings);
+        return prevListings;
       });
       
-      if (!targetListing || !listingStatus) return;
+      if (!targetListing || !listingStatus) {
+        toast({
+          title: 'Error',
+          description: 'No se encontró el anuncio para destacar',
+          variant: 'destructive',
+        });
+        setActionLoading(null);
+        return;
+      }
       
-      const newFeaturedStatus = !targetListing.isFeatured;
+      const newFeaturedStatus = !isFeatured;
+      
+      // Mostrar indicador de carga
+      toast({
+        title: 'Procesando',
+        description: newFeaturedStatus ? 'Destacando anuncio...' : 'Quitando destacado...',
+      });
       
       // Llamar al servicio para cambiar el estado destacado
       await ListingService.toggleFeatured(listingId, newFeaturedStatus, user.id);
       
       // Actualizar el estado local
-      const updatedListings = { ...listings };
-      updatedListings[listingStatus] = updatedListings[listingStatus].map(listing => 
-        listing.id === listingId 
-          ? { ...listing, isFeatured: newFeaturedStatus } 
-          : listing
-      );
-      
-      setListings(updatedListings);
+      setListings(prevListings => {
+        const updatedListings = { ...prevListings };
+        if (listingStatus) {
+          updatedListings[listingStatus] = updatedListings[listingStatus].map((listing) =>
+            listing.id === listingId ? { ...listing, isFeatured: newFeaturedStatus } : listing,
+          );
+        }
+        return updatedListings;
+      });
       
       toast({
-        title: newFeaturedStatus ? 'Anuncio destacado' : 'Anuncio no destacado',
-        description: newFeaturedStatus 
-          ? 'Tu anuncio ahora aparecerá como destacado' 
-          : 'Tu anuncio ya no aparecerá como destacado'
+        title: newFeaturedStatus ? 'Anuncio destacado' : 'Destacado eliminado',
+        description: newFeaturedStatus
+          ? 'Tu anuncio ahora aparecerá como destacado'
+          : 'Tu anuncio ya no aparecerá como destacado',
       });
     } catch (error) {
       console.error('Error cambiando estado destacado:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo cambiar el estado destacado del anuncio. Por favor, intenta de nuevo.',
-        variant: 'destructive'
+        description:
+          'No se pudo cambiar el estado destacado del anuncio. Por favor, intenta de nuevo.',
+        variant: 'destructive',
       });
+    } finally {
+      setActionLoading(null);
     }
   };
 
   // Renovar un anuncio expirado (reactivarlo)
   const handleRenewListing = async (listingId: string) => {
-    // Este es esencialmente un cambio de estado de 'expired' a 'active'
-    await handleStatusChange(listingId, 'active');
+    try {
+      setActionLoading(listingId);
+      // Mostrar indicador de carga
+      toast({
+        title: 'Procesando',
+        description: 'Renovando anuncio...',
+      });
+      
+      // Este es esencialmente un cambio de estado de 'expired' a 'active'
+      await handleStatusChange(listingId, 'active');
+      
+      // Mensaje específico para renovación
+      toast({
+        title: 'Anuncio renovado',
+        description: 'Tu anuncio ha sido renovado por 30 días adicionales',
+      });
+    } catch (error) {
+      console.error('Error renovando anuncio:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo renovar el anuncio. Por favor, intenta de nuevo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Ver un anuncio
+  const handleViewListing = (listingId: string) => {
+    router.push(`/cars/${listingId}`);
+  };
+
+  // Editar un anuncio
+  const handleEditListing = (listingId: string) => {
+    router.push(`/sell/list?edit=${listingId}`);
   };
 
   // Si está cargando la autenticación o los datos, mostrar spinner
@@ -250,6 +440,26 @@ export default function MyListingsPage() {
       <div className="container py-10 flex flex-col items-center justify-center min-h-[70vh]">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
         <p>{t('common.loading')}</p>
+        <p>authLoading: {authLoading.toString()}</p>
+        <p>loading: {loading.toString()}</p>
+      </div>
+    );
+  }
+
+  // Si hay un error de carga, mostrar mensaje
+  if (loadError) {
+    return (
+      <div className="container py-10 flex flex-col items-center justify-center min-h-[70vh]">
+        <div className="text-destructive text-center mb-4">
+          <p className="text-lg font-bold">Error al cargar los anuncios</p>
+          <p>{loadError}</p>
+        </div>
+        <Button onClick={() => {
+          hasLoadedRef.current = false;
+          loadUserListings();
+        }}>
+          Intentar nuevamente
+        </Button>
       </div>
     );
   }
@@ -259,16 +469,10 @@ export default function MyListingsPage() {
     return (
       <div className="container py-10">
         <div className="max-w-md mx-auto text-center py-16">
-          <h1 className="text-2xl font-bold mb-4">
-            {t('sell.myListings.pageTitle')}
-          </h1>
-          <p className="mb-8">
-            Para ver tus anuncios, primero debes iniciar sesión en tu cuenta.
-          </p>
+          <h1 className="text-2xl font-bold mb-4">{t('sell.myListings.pageTitle')}</h1>
+          <p className="mb-8">Para ver tus anuncios, primero debes iniciar sesión en tu cuenta.</p>
           <Button asChild>
-            <Link href="/sign-in">
-              Iniciar sesión
-            </Link>
+            <Link href="/sign-in">Iniciar sesión</Link>
           </Button>
         </div>
       </div>
@@ -299,12 +503,26 @@ export default function MyListingsPage() {
     switch (status) {
       case 'active':
         return <Badge variant="default">{t('sell.myListings.status.active')}</Badge>;
+      case 'approved':
+        return <Badge variant="default">{t('sell.myListings.status.approved')}</Badge>;
       case 'pending':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">{t('sell.myListings.status.pending')}</Badge>;
+        return (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+            {t('sell.myListings.status.pending')}
+          </Badge>
+        );
       case 'sold':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">{t('sell.myListings.status.sold')}</Badge>;
+        return (
+          <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
+            {t('sell.myListings.status.sold')}
+          </Badge>
+        );
       case 'expired':
-        return <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">{t('sell.myListings.status.expired')}</Badge>;
+        return (
+          <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
+            {t('sell.myListings.status.expired')}
+          </Badge>
+        );
       case 'draft':
         return <Badge variant="outline">{t('sell.myListings.status.draft')}</Badge>;
       case 'rejected':
@@ -324,7 +542,7 @@ export default function MyListingsPage() {
           {t('sell.myListings.pageSubtitle')}
         </p>
       </div>
-      
+
       <div className="mb-6 flex justify-between items-center">
         <div></div>
         <Button asChild>
@@ -334,11 +552,11 @@ export default function MyListingsPage() {
           </Link>
         </Button>
       </div>
-      
-      <Tabs defaultValue="active">
+
+      <Tabs defaultValue="approved">
         <TabsList className="mb-6">
-          <TabsTrigger value="active">
-            {t('sell.myListings.tabs.active')} ({listings.active.length})
+          <TabsTrigger value="approved">
+            {t('sell.myListings.tabs.approved')} ({listings.approved.length})
           </TabsTrigger>
           <TabsTrigger value="pending">
             {t('sell.myListings.tabs.pending')} ({listings.pending.length})
@@ -356,11 +574,11 @@ export default function MyListingsPage() {
             {t('sell.myListings.tabs.rejected')} ({listings.rejected.length})
           </TabsTrigger>
         </TabsList>
-        
+
         {Object.keys(listings).map((status) => {
           const statusKey = status as keyof typeof listings;
           const statusListings = listings[statusKey];
-          
+
           return (
             <TabsContent key={status} value={status} className="w-full">
               {statusListings.length === 0 ? (
@@ -373,8 +591,12 @@ export default function MyListingsPage() {
                         <TableHead>{t('sell.myListings.table.vehicle')}</TableHead>
                         <TableHead>{t('sell.myListings.table.price')}</TableHead>
                         <TableHead>{t('sell.myListings.table.status')}</TableHead>
-                        <TableHead className="text-center">{t('sell.myListings.table.views')}</TableHead>
-                        <TableHead className="text-center">{t('sell.myListings.table.contacts')}</TableHead>
+                        <TableHead className="text-center">
+                          {t('sell.myListings.table.views')}
+                        </TableHead>
+                        <TableHead className="text-center">
+                          {t('sell.myListings.table.contacts')}
+                        </TableHead>
                         <TableHead>{t('sell.myListings.table.publishDate')}</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
@@ -385,13 +607,20 @@ export default function MyListingsPage() {
                           <TableCell className="font-medium">
                             <div className="flex items-center space-x-3">
                               <div className="relative h-10 w-16 overflow-hidden rounded">
-                                <Image 
-                                  src={listing.images[0]} 
-                                  alt={listing.title}
-                                  fill
-                                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                  className="object-cover"
-                                />
+                                {listing.images.length > 0 && (
+                                  <Image
+                                    src={listing.images[0]}
+                                    alt={listing.title}
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                    className="object-cover"
+                                  />
+                                )}
+                                {listing.images.length === 0 && (
+                                  <div className="relative h-10 w-16 overflow-hidden rounded">
+                                    <FaCarSide className="h-6 w-6 text-muted-foreground" />
+                                  </div>
+                                )}
                               </div>
                               <div>
                                 <p className="font-medium">{listing.title}</p>
@@ -410,9 +639,7 @@ export default function MyListingsPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            {getStatusBadge(listing.status)}
-                          </TableCell>
+                          <TableCell>{getStatusBadge(listing.status)}</TableCell>
                           <TableCell className="text-center">{listing.viewCount}</TableCell>
                           <TableCell className="text-center">{listing.contactCount}</TableCell>
                           <TableCell>
@@ -434,66 +661,139 @@ export default function MyListingsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleViewListing(listing.id)}
+                                  disabled={actionLoading === listing.id}
+                                >
                                   <Eye className="mr-2 h-4 w-4" />
                                   <span>{t('sell.myListings.actions.view')}</span>
                                 </DropdownMenuItem>
-                                
+
                                 {/* Editar solo disponible para activos, pendientes y borradores */}
-                                {['active', 'pending', 'draft'].includes(listing.status) && (
-                                  <DropdownMenuItem>
+                                {['active', 'pending', 'draft', 'approved'].includes(
+                                  listing.status,
+                                ) && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleEditListing(listing.id)}
+                                    disabled={actionLoading === listing.id}
+                                  >
                                     <Edit className="mr-2 h-4 w-4" />
                                     <span>{t('sell.myListings.actions.edit')}</span>
                                   </DropdownMenuItem>
                                 )}
-                                
+
                                 {/* Marcar como vendido solo para activos */}
                                 {listing.status === 'active' && (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(listing.id, 'sold')}>
-                                    <ShieldAlert className="mr-2 h-4 w-4" />
-                                    <span>{t('sell.myListings.actions.markAsSold')}</span>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatusChange(listing.id, 'sold')}
+                                    disabled={actionLoading === listing.id}
+                                  >
+                                    {actionLoading === listing.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Procesando...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ShieldAlert className="mr-2 h-4 w-4" />
+                                        <span>{t('sell.myListings.actions.markAsSold')}</span>
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                 )}
-                                
+
                                 {/* Destacar/no destacar solo para activos */}
                                 {listing.status === 'active' && (
-                                  <DropdownMenuItem onClick={() => handleToggleFeatured(listing.id)}>
-                                    <Star className="mr-2 h-4 w-4" />
-                                    <span>{listing.isFeatured ? 'Quitar destacado' : t('sell.myListings.actions.feature')}</span>
+                                  <DropdownMenuItem
+                                    onClick={() => handleToggleFeatured(listing.id)}
+                                    disabled={actionLoading === listing.id}
+                                  >
+                                    {actionLoading === listing.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Procesando...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Star className="mr-2 h-4 w-4" />
+                                        <span>
+                                          {listing.isFeatured
+                                            ? 'Quitar destacado'
+                                            : t('sell.myListings.actions.feature')}
+                                        </span>
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                 )}
-                                
+
                                 {/* Pausar disponible para activos */}
                                 {listing.status === 'active' && (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(listing.id, 'draft')}>
-                                    <Clock className="mr-2 h-4 w-4" />
-                                    <span>{t('sell.myListings.actions.pause')}</span>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatusChange(listing.id, 'draft')}
+                                    disabled={actionLoading === listing.id}
+                                  >
+                                    {actionLoading === listing.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Procesando...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Clock className="mr-2 h-4 w-4" />
+                                        <span>{t('sell.myListings.actions.pause')}</span>
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                 )}
-                                
+
                                 {/* Activar disponible para borradores */}
                                 {listing.status === 'draft' && (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(listing.id, 'active')}>
-                                    <Clock className="mr-2 h-4 w-4" />
-                                    <span>{t('sell.myListings.actions.activate')}</span>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatusChange(listing.id, 'active')}
+                                    disabled={actionLoading === listing.id}
+                                  >
+                                    {actionLoading === listing.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Procesando...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Clock className="mr-2 h-4 w-4" />
+                                        <span>{t('sell.myListings.actions.activate')}</span>
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                 )}
-                                
+
                                 {/* Renovar disponible para expirados */}
                                 {listing.status === 'expired' && (
-                                  <DropdownMenuItem onClick={() => handleRenewListing(listing.id)}>
-                                    <Clock className="mr-2 h-4 w-4" />
-                                    <span>{t('sell.myListings.actions.renew')}</span>
+                                  <DropdownMenuItem
+                                    onClick={() => handleRenewListing(listing.id)}
+                                    disabled={actionLoading === listing.id}
+                                  >
+                                    {actionLoading === listing.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Procesando...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Clock className="mr-2 h-4 w-4" />
+                                        <span>{t('sell.myListings.actions.renew')}</span>
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                 )}
-                                
+
                                 {/* Eliminar disponible para todos */}
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   className="text-destructive"
                                   onClick={() => {
                                     setSelectedListingId(listing.id);
                                     setDeleteConfirmOpen(true);
                                   }}
+                                  disabled={actionLoading === listing.id}
                                 >
                                   <Trash className="mr-2 h-4 w-4" />
                                   <span>{t('sell.myListings.actions.delete')}</span>
@@ -511,26 +811,53 @@ export default function MyListingsPage() {
           );
         })}
       </Tabs>
-      
+
       {/* Diálogo de confirmación para eliminar */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <Dialog
+        open={deleteConfirmOpen}
+        onOpenChange={(isOpen) => {
+          if (!isDeleting) {
+            setDeleteConfirmOpen(isOpen);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('sell.myListings.deleteConfirm.title')}</DialogTitle>
             <DialogDescription>
               {t('sell.myListings.deleteConfirm.description')}
+              {selectedListingId && (
+                <p className="mt-2 font-medium">
+                  {
+                    Object.values(listings)
+                      .flat()
+                      .find((listing) => listing.id === selectedListingId)?.title
+                  }
+                </p>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={isDeleting}
+            >
               {t('sell.myListings.deleteConfirm.cancelButton')}
             </Button>
-            <Button variant="destructive" onClick={handleDeleteListing}>
-              {t('sell.myListings.deleteConfirm.confirmButton')}
+            <Button variant="destructive" onClick={handleDeleteListing} disabled={isDeleting}>
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                t('sell.myListings.deleteConfirm.confirmButton')
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
-} 
+}

@@ -338,6 +338,17 @@ export const CatalogService = {
     }
   },
   
+  // Incrementar contador de contactos para un anuncio
+  async incrementContactCount(id: string): Promise<void> {
+    const supabase = createClient();
+    
+    const { error } = await supabase.rpc('increment_listing_contact_count', { listing_id: id });
+    
+    if (error) {
+      console.error('Error incrementing contact count:', error);
+    }
+  },
+  
   // Obtener detalle de un anuncio específico
   async getListingById(id: string): Promise<Car | null> {
     const supabase = createClient();

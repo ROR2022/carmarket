@@ -28,6 +28,34 @@ export function formatDate(isoDate: string): string {
 }
 
 /**
+ * Formatea una fecha como relativa a la hora actual (ej: "hace 5 minutos").
+ */
+export function formatRelativeDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  if (diffSecs < 60) {
+    return 'hace un momento';
+  } else if (diffMins < 60) {
+    return `hace ${diffMins} ${diffMins === 1 ? 'minuto' : 'minutos'}`;
+  } else if (diffHours < 24) {
+    return `hace ${diffHours} ${diffHours === 1 ? 'hora' : 'horas'}`;
+  } else if (diffDays < 30) {
+    return `hace ${diffDays} ${diffDays === 1 ? 'día' : 'días'}`;
+  } else if (diffMonths < 12) {
+    return `hace ${diffMonths} ${diffMonths === 1 ? 'mes' : 'meses'}`;
+  } else {
+    return formatDate(isoDate);
+  }
+}
+
+/**
  * Capitaliza la primera letra de un string.
  */
 export function capitalize(str: string): string {
