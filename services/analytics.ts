@@ -341,30 +341,15 @@ export const AnalyticsService = {
   async getListingsPerformance(sellerId: string): Promise<ListingPerformance> {
     try {
       const supabase = await createClient();
-      // Obtener publicaciones del vendedor con sus métricas
-      const { data: listings, error } = await supabase
-        .from('listings')
-        .select(`
-          id,
-          title,
-          price,
-          model,
-          make,
-          year,
-          images,
-          view_count,
-          contact_count,
-          created_at,
-          updated_at,
-          status
-        `)
-        .eq('user_id', sellerId)
-        .order('view_count', { ascending: false });
       
-      if (error) throw error;
-
-      // Si no hay publicaciones, devolver valores por defecto
-      if (!listings || listings.length === 0) {
+      // 1. Obtener todos los listados del vendedor
+      const { data: listings, error: listingError } = await supabase
+        .from('listings')
+        .select('id, make, model, year, price, status, view_count, contact_count, created_at, updated_at, images')
+        .eq('seller_id', sellerId);
+      
+      if (listingError || !listings || listings.length === 0) {
+        console.error('Error fetching seller listings for performance:', listingError);
         return {
           topPerformers: [],
           lowPerformers: [],
@@ -372,51 +357,65 @@ export const AnalyticsService = {
         };
       }
       
-      // Convertir a tipo CarListing
-      const carListings = listings.map((listing: Record<string, unknown>) => {
-        // Cast to unknown first and then to CarListing to avoid TypeScript error
-        return {
-          id: listing.id as string,
-          title: `${listing.make as string} ${listing.model as string} ${listing.year as number}`,
-          description: '',
-          price: listing.price as number,
-          images: listing.images as string[],
-          location: '',
-          userId: sellerId,
-          status: listing.status as string,
-          make: listing.make as string,
-          model: listing.model as string,
-          year: listing.year as number,
-          brand: listing.make as string, // Assuming brand is the same as make
-          category: 'unknown', // Default value for required fields
-          mileage: 0, // Default value
-          fuelType: 'unknown', // Default value
-          viewCount: listing.view_count as number,
-          contactCount: listing.contact_count as number,
-          createdAt: listing.created_at as string,
-          updatedAt: listing.updated_at as string
-        } as unknown as CarListing;
-      });
+      // Convertir a tipo CarListing - limitar a grupos más pequeños para evitar operaciones grandes
+      let carListings: CarListing[] = [];
+      
+      // Procesar en lotes más pequeños (procesamos 25 a la vez)
+      for (let i = 0; i < listings.length; i += 25) {
+        const batchListings = listings.slice(i, i + 25);
+        
+        const batchCarListings = batchListings.map((listing: Record<string, unknown>) => {
+          // Cast to unknown first and then to CarListing to avoid TypeScript error
+          return {
+            id: listing.id as string,
+            title: `${listing.make as string} ${listing.model as string} ${listing.year as number}`,
+            description: '',
+            price: listing.price as number,
+            images: listing.images as string[],
+            location: '',
+            userId: sellerId,
+            status: listing.status as string,
+            make: listing.make as string,
+            model: listing.model as string,
+            year: listing.year as number,
+            brand: listing.make as string, // Assuming brand is the same as make
+            category: 'unknown', // Default value for required fields
+            mileage: 0, // Default value
+            fuelType: 'unknown', // Default value
+            viewCount: listing.view_count as number,
+            contactCount: listing.contact_count as number,
+            createdAt: listing.created_at as string,
+            updatedAt: listing.updated_at as string
+          } as unknown as CarListing;
+        });
+        
+        carListings = [...carListings, ...batchCarListings];
+      }
       
       // Obtener métricas de rendimiento
       const performanceMetrics = await this.calculatePerformanceMetrics(sellerId);
       
-      // Ordenar por rendimiento (puede ser más sofisticado combinando vistas, contactos, etc.)
-      const sortedByPerformance = [...carListings].sort((a, b) => {
-        const scoreA = this.calculateListingScore(a);
-        const scoreB = this.calculateListingScore(b);
-        return scoreB - scoreA;
-      });
+      // Calcular las puntuaciones una vez y almacenarlas para evitar cálculos repetidos
+      const listingsWithScores = carListings.map(listing => ({
+        listing,
+        score: this.calculateListingScore(listing)
+      }));
+      
+      // Ordenar por puntuación (de mayor a menor)
+      const sortedByScore = [...listingsWithScores].sort((a, b) => b.score - a.score);
       
       // Obtener top 5 y bottom 5 (o menos si no hay suficientes)
-      const topPerformers = sortedByPerformance.slice(0, 5);
-      const lowPerformers = [...sortedByPerformance]
-        .sort((a, b) => this.calculateListingScore(a) - this.calculateListingScore(b))
-        .slice(0, 5);
+      const topPerformers = sortedByScore.slice(0, Math.min(5, sortedByScore.length))
+        .map(item => item.listing);
+        
+      const bottomPerformers = [...sortedByScore]
+        .sort((a, b) => a.score - b.score)
+        .slice(0, Math.min(5, sortedByScore.length))
+        .map(item => item.listing);
       
       return {
         topPerformers,
-        lowPerformers,
+        lowPerformers: bottomPerformers,
         performanceMetrics
       };
     } catch (error) {
@@ -479,18 +478,31 @@ export const AnalyticsService = {
     const listingIds = listings.map(l => l.id);
     const listingMap = new Map(listings.map(l => [l.id, l.title]));
     
-    const { data: reservations, error: reservationsError } = await supabase
-      .from('car_reservations')
-      .select('id, listing_id, user_id, reservation_amount, payment_status, expires_at, created_at')
-      .in('listing_id', listingIds)
-      .gte('created_at', startDateStr);
+    // Procesar en lotes para evitar errores de "Invalid array length"
+    let allReservations: any[] = [];
     
-    if (reservationsError) {
-      console.error('Error fetching reservations for export:', reservationsError);
-      throw new Error('Error al exportar datos de reservas');
+    // Procesar listingIds en lotes de 20
+    for (let i = 0; i < listingIds.length; i += 20) {
+      const batchIds = listingIds.slice(i, i + 20);
+      
+      const { data: batchReservations, error: reservationsError } = await supabase
+        .from('car_reservations')
+        .select('id, listing_id, user_id, reservation_amount, payment_status, expires_at, created_at')
+        .in('listing_id', batchIds)
+        .gte('created_at', startDateStr);
+      
+      if (reservationsError) {
+        console.error('Error fetching reservations batch for export:', reservationsError);
+        throw new Error('Error al exportar datos de reservas');
+      }
+      
+      if (batchReservations && batchReservations.length > 0) {
+        allReservations = [...allReservations, ...batchReservations];
+      }
     }
     
-    if (!reservations || reservations.length === 0) {
+    // Usar allReservations en lugar de reservations
+    if (allReservations.length === 0) {
       // Si no hay reservas, devolver un CSV o JSON vacío
       return format === 'csv' 
         ? 'ID Reserva,ID Listado,Título Vehículo,ID Comprador,Monto,Estado Pago,Fecha Expiración,Fecha Creación\n'
@@ -503,7 +515,7 @@ export const AnalyticsService = {
       let csv = 'ID Reserva,ID Listado,Título Vehículo,ID Comprador,Monto,Estado Pago,Fecha Expiración,Fecha Creación\n';
       
       // Agregar filas
-      reservations.forEach(r => {
+      allReservations.forEach(r => {
         const vehicleTitle = listingMap.get(r.listing_id) || 'Desconocido';
         const row = [
           r.id,
@@ -522,7 +534,7 @@ export const AnalyticsService = {
       return csv;
     } else {
       // Formato JSON
-      const jsonData = reservations.map(r => ({
+      const jsonData = allReservations.map(r => ({
         id: r.id,
         listingId: r.listing_id,
         vehicleTitle: listingMap.get(r.listing_id) || 'Desconocido',

@@ -103,14 +103,21 @@ export async function GET(request: Request) {
       let threadsMessages: unknown[] = [];
       
       if (threadIds.length > 0) {
-        const { data: allThreadsMessages, error: allThreadsError } = await supabase
-          .from('messages')
-          .select('*')
-          .in('thread_id', threadIds)
-          .order('created_at', { ascending: true });
-        
-        if (allThreadsError) throw allThreadsError;
-        threadsMessages = allThreadsMessages || [];
+        // Procesar en lotes para evitar errores de "Invalid array length"
+        for (let i = 0; i < threadIds.length; i += 20) {
+          const batchIds = threadIds.slice(i, i + 20);
+          
+          const { data: batchThreadsMessages, error: batchThreadsError } = await supabase
+            .from('messages')
+            .select('*')
+            .in('thread_id', batchIds)
+            .order('created_at', { ascending: true });
+          
+          if (batchThreadsError) throw batchThreadsError;
+          if (batchThreadsMessages) {
+            threadsMessages = [...threadsMessages, ...batchThreadsMessages];
+          }
+        }
       }
       
       results.communication = {
@@ -149,15 +156,22 @@ export async function GET(request: Request) {
     // Obtener respuestas a esos hilos
     let threadReplies: unknown[] = [];
     if (uniqueThreadIds.length > 0) {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .in('thread_id', uniqueThreadIds)
-        .neq('sender_id', user.id)
-        .order('created_at', { ascending: true });
-      
-      if (error) throw error;
-      threadReplies = data || [];
+      // Procesar en lotes para evitar errores de "Invalid array length"
+      for (let i = 0; i < uniqueThreadIds.length; i += 20) {
+        const batchIds = uniqueThreadIds.slice(i, i + 20);
+        
+        const { data: batchReplies, error: batchError } = await supabase
+          .from('messages')
+          .select('*')
+          .in('thread_id', batchIds)
+          .neq('sender_id', user.id)
+          .order('created_at', { ascending: true });
+        
+        if (batchError) throw batchError;
+        if (batchReplies) {
+          threadReplies = [...threadReplies, ...batchReplies];
+        }
+      }
     }
     
     results.userMessages = {
