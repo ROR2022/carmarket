@@ -21,9 +21,7 @@
     "db:migrate": "supabase db push",
     "db:backup": "supabase db dump -f backup.sql",
     "prereview": "npm run lint && npm test",
-    "review": "npm run build",
-    "deploy:vercel": "vercel",
-    "deploy:production": "vercel --prod"
+    "review": "npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -111,7 +109,6 @@
     "tailwindcss": "^3.4.17",
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5",
-    "vercel": "^41.4.1"
+    "typescript": "^5"
   }
 }
