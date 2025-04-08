@@ -290,37 +290,36 @@ export const MessageService = {
     // Sin utilizar join implícito para evitar el error
     let threadReplies: DbMessageWithRelations[] = [];
     if (threadIds.size > 0) {
+      // Convertir el Set a Array para la consulta
       const threadIdsArray = Array.from(threadIds);
       console.log(`[DEBUG getReceivedMessages] Buscando respuestas en estos hilos: ${threadIdsArray.join(', ')}`);
       
-      const { data: replies, error: repliesError } = await supabase
-        .from('messages')
-        .select(`
-          *,
-          listings(id, title)
-        `)
-        .in('thread_id', threadIdsArray)  // En los hilos identificados
-        .neq('sender_id', userId)         // No enviados por el usuario (son respuestas)
-        .eq('is_deleted', false)          // No eliminados
-        .eq('is_archived', false)         // No archivados
-        .order('created_at', { ascending: false });
-      
-      if (repliesError) {
-        console.error('Error getting replies in threads:', repliesError);
-        throw new Error('Error al obtener respuestas en hilos: ' + repliesError.message);
+      // Procesamos en lotes de 20 IDs para evitar errores de "Invalid array length"
+      for (let i = 0; i < threadIdsArray.length; i += 20) {
+        const batchIds = threadIdsArray.slice(i, i + 20);
+        
+        // Consulta por lotes en lugar de enviar todos los IDs a la vez
+        const { data: batchReplies, error: repliesError } = await supabase
+          .from('messages')
+          .select(`
+            *,
+            listings(id, title)
+          `)
+          .in('thread_id', batchIds)       // En los hilos identificados
+          .neq('sender_id', userId)         // No enviados por el usuario (son respuestas)
+          .eq('is_deleted', false)          // No eliminados
+          .eq('is_archived', false)         // No archivados
+          .order('created_at', { ascending: false });
+        
+        if (repliesError) {
+          console.error('Error getting replies in threads batch:', repliesError);
+          console.error('Error details:', JSON.stringify(repliesError));
+        } else if (batchReplies && batchReplies.length > 0) {
+          // Informamos sobre cada lote y acumulamos resultados
+          console.log(`[DEBUG getReceivedMessages] Se encontraron ${batchReplies.length} respuestas en el lote ${i/20 + 1}`);
+          threadReplies = [...threadReplies, ...batchReplies];
+        }
       }
-      
-      console.log(`[DEBUG getReceivedMessages] Respuestas encontradas en hilos: ${replies?.length || 0}`);
-      
-      // Mostrar detalles de las primeras respuestas para depuración
-      if (replies && replies.length > 0) {
-        const sample = replies.slice(0, Math.min(3, replies.length));
-        sample.forEach(msg => {
-          console.log(`[DEBUG getReceivedMessages] Respuesta en hilo - ID: ${msg.id}, Thread: ${msg.thread_id}, Sender: ${msg.sender_id}, Seller: ${msg.seller_id}`);
-        });
-      }
-      
-      threadReplies = replies || [];
     }
     
     // 4. Combinar mensajes recibidos como vendedor y respuestas a hilos iniciados como comprador
@@ -380,22 +379,26 @@ export const MessageService = {
     const imagesByListingId: Record<string, string> = {};
     
     if (listingIds.length > 0) {
-      const { data: images, error: imagesError } = await supabase
-        .from('listing_images')
-        .select('listing_id, url')
-        .in('listing_id', listingIds)
-        .eq('is_primary', true);
-      
-      if (!imagesError && images && images.length > 0) {
-        images.forEach(img => {
-          if (!imagesByListingId[img.listing_id]) {
-            imagesByListingId[img.listing_id] = img.url;
-          }
-        });
+      // CAMBIO: Procesar en lotes de 20 IDs para evitar errores de "Invalid array length"
+      for (let i = 0; i < listingIds.length; i += 20) {
+        const batchListingIds = listingIds.slice(i, i + 20);
+        
+        const { data: images, error: imagesError } = await supabase
+          .from('listing_images')
+          .select('listing_id, url')
+          .in('listing_id', batchListingIds) // CAMBIO: Usar el lote actual en lugar de todos
+          .eq('is_primary', true);
+        
+        if (!imagesError && images && images.length > 0) {
+          images.forEach(img => {
+            if (!imagesByListingId[img.listing_id]) {
+              imagesByListingId[img.listing_id] = img.url;
+            }
+          });
+        }
       }
     }
     
-    // Mapear los resultados al formato MessageData
     return uniqueReceivedMessages.map(msg => {
       // Obtener información del remitente y vendedor de los perfiles
       const sender = profiles[msg.sender_id] || {};
@@ -546,18 +549,23 @@ export const MessageService = {
     const imagesByListingId: Record<string, string> = {};
     
     if (listingIds.length > 0) {
-      const { data: images, error: imagesError } = await supabase
-        .from('listing_images')
-        .select('listing_id, url')
-        .in('listing_id', listingIds)
-        .eq('is_primary', true);
-      
-      if (!imagesError && images && images.length > 0) {
-        images.forEach(img => {
-          if (!imagesByListingId[img.listing_id]) {
-            imagesByListingId[img.listing_id] = img.url;
-          }
-        });
+      // CAMBIO: Procesar en lotes de 20 IDs para evitar errores de "Invalid array length"
+      for (let i = 0; i < listingIds.length; i += 20) {
+        const batchListingIds = listingIds.slice(i, i + 20);
+        
+        const { data: images, error: imagesError } = await supabase
+          .from('listing_images')
+          .select('listing_id, url')
+          .in('listing_id', batchListingIds) // CAMBIO: Usar el lote actual en lugar de todos
+          .eq('is_primary', true);
+        
+        if (!imagesError && images && images.length > 0) {
+          images.forEach(img => {
+            if (!imagesByListingId[img.listing_id]) {
+              imagesByListingId[img.listing_id] = img.url;
+            }
+          });
+        }
       }
     }
     
@@ -828,19 +836,24 @@ export const MessageService = {
     const imagesByListingId: Record<string, string> = {};
     
     if (listingIds.length > 0) {
-      const { data: images, error: imagesError } = await supabase
-        .from('listing_images')
-        .select('listing_id, url')
-        .in('listing_id', listingIds)
-        .eq('is_primary', true)
-        .order('display_order', { ascending: true });
-      
-      if (!imagesError && images && images.length > 0) {
-        images.forEach(img => {
-          if (!imagesByListingId[img.listing_id]) {
-            imagesByListingId[img.listing_id] = img.url;
-          }
-        });
+      // CAMBIO: Procesar en lotes de 20 IDs para evitar errores de "Invalid array length"
+      for (let i = 0; i < listingIds.length; i += 20) {
+        const batchListingIds = listingIds.slice(i, i + 20);
+        
+        const { data: images, error: imagesError } = await supabase
+          .from('listing_images')
+          .select('listing_id, url')
+          .in('listing_id', batchListingIds) // CAMBIO: Usar el lote actual en lugar de todos
+          .eq('is_primary', true)
+          .order('display_order', { ascending: true });
+        
+        if (!imagesError && images && images.length > 0) {
+          images.forEach(img => {
+            if (!imagesByListingId[img.listing_id]) {
+              imagesByListingId[img.listing_id] = img.url;
+            }
+          });
+        }
       }
     }
     
@@ -1549,7 +1562,7 @@ export const MessageService = {
       // Si el mensaje no tiene thread_id, su propio ID podría ser el thread_id para otros mensajes
       else {
         threadIds.add(msg.id);
-        console.log(`[DEBUG getConversations] Añadido ID de mensaje como posible thread_id: ${msg.id}`);
+        console.log(`[DEBUG getConversations] Añadido ID como posible thread_id: ${msg.id}`);
       }
     });
     
@@ -1566,43 +1579,57 @@ export const MessageService = {
       // IMPORTANTE: Incluir tanto mensajes con thread_id que coincide 
       // COMO mensajes cuyo ID coincide con alguno de los thread_ids 
       // (para capturar cabezas de hilo que pueden no tener thread_id propio)
-      const { data: allThreadMessages, error: threadError } = await supabase
-        .from('messages')
-        .select(`
-          *,
-          listings(id, title)
-        `)
-        .or(`thread_id.in.(${threadIdsArray.join(',')}),id.in.(${threadIdsArray.join(',')})`)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
+      let allThreadMessages: any[] = [];
       
-      if (threadError) {
-        console.error('Error getting full thread messages:', threadError);
-        console.error('Error details:', JSON.stringify(threadError));
-      } else {
-        console.log(`[DEBUG getConversations] Se encontraron ${allThreadMessages?.length || 0} mensajes en hilos`);
-        if (allThreadMessages) {
-          allMessagesInThreads = [...allMessagesInThreads, ...allThreadMessages];
+      // Procesamos IDs en lotes de 20 para prevenir errores de "Invalid array length"
+      for (let i = 0; i < threadIdsArray.length; i += 20) {
+        const batchIds = threadIdsArray.slice(i, i + 20);
+        
+        // Primera consulta - buscar mensajes donde thread_id está en el lote actual
+        const { data: threadMessages, error: threadError } = await supabase
+          .from('messages')
+          .select(`
+            *,
+            listings(id, title)
+          `)
+          .in('thread_id', batchIds)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false });
           
-          // Log completo de todos los mensajes encontrados para depuración
-          console.log('[DEBUG getConversations] Lista completa de mensajes encontrados:');
-          allThreadMessages.forEach(msg => {
-            console.log(`  - Mensaje ID: ${msg.id}, Thread: ${msg.thread_id || '(null)'}, Parent: ${msg.parent_message_id || '(null)'}, Sender: ${msg.sender_id}, Seller: ${msg.seller_id}, Created: ${msg.created_at}`);
-          });
+        if (threadError) {
+          console.error('Error getting thread messages batch:', threadError);
+        } else if (threadMessages) {
+          allThreadMessages = [...allThreadMessages, ...threadMessages];
+        }
+        
+        // Segunda consulta - buscar mensajes cuyo ID está en el lote (cabezas de hilo)
+        const { data: idMessages, error: idError } = await supabase
+          .from('messages')
+          .select(`
+            *,
+            listings(id, title)
+          `)
+          .in('id', batchIds)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false });
+          
+        if (idError) {
+          console.error('Error getting id messages batch:', idError);
+        } else if (idMessages) {
+          allThreadMessages = [...allThreadMessages, ...idMessages];
         }
       }
-
-      // Depuración: Contar mensajes por thread_id para verificar
-      const countByThread: Record<string, number> = {};
-      allMessagesInThreads.forEach(msg => {
-        const threadKey = msg.thread_id || msg.id;
-        countByThread[threadKey] = (countByThread[threadKey] || 0) + 1;
-      });
       
-      console.log('[DEBUG getConversations] Conteo de mensajes por thread_id:');
-      Object.entries(countByThread).forEach(([threadId, count]) => {
-        console.log(`  - Thread ${threadId}: ${count} mensajes`);
-      });
+      // Verificamos si encontramos mensajes y los agregamos al resultado
+      if (allThreadMessages.length === 0) {
+        console.error('No se encontraron mensajes en los hilos');
+      } else {
+        console.log(`[DEBUG getConversations] Se encontraron ${allThreadMessages.length} mensajes en hilos`);
+        allMessagesInThreads = [...allMessagesInThreads, ...allThreadMessages];
+        
+        // Log reducido para evitar sobrecarga de memoria
+        console.log(`[DEBUG getConversations] Encontrados ${allThreadMessages.length} mensajes en total`);
+      }
     }
     
     // 3. Eliminar duplicados
@@ -1626,18 +1653,16 @@ export const MessageService = {
     const profiles: Record<string, { id: string, email?: string, full_name?: string, phone?: string }> = {};
     
     if (userIdsArray.length > 0) {
-      // Dividir la solicitud en lotes para evitar problemas con grandes conjuntos de IDs
-      // y usar un filtro alternativo para evitar el problema con in()
+      // CAMBIO: Mantener el enfoque de dividir en lotes, pero simplificar la consulta
+      // Procesamos en lotes de 10 IDs para evitar problemas con grandes conjuntos
       for (let i = 0; i < userIdsArray.length; i += 10) {
         const batch = userIdsArray.slice(i, i + 10);
         
-        // Construir un filtro OR para cada ID
-        const filterCondition = batch.map(id => `id.eq.${id}`).join(',');
-        
+        // CAMBIO: Usar directamente .in() en lugar de construir filtros OR complejos
         const { data: userProfiles, error: profilesError } = await supabase
           .from('profiles')
           .select('id, email, full_name')
-          .or(filterCondition);
+          .in('id', batch);
           
         if (!profilesError && userProfiles) {
           userProfiles.forEach(profile => {
@@ -1654,22 +1679,27 @@ export const MessageService = {
     
     // 6. Obtener imágenes de listados
     const listingIds = Array.from(new Set(uniqueMessages.map(msg => msg.listing_id)));
-    
     const imagesByListingId: Record<string, string> = {};
+    
     if (listingIds.length > 0) {
-      const { data: images, error: imagesError } = await supabase
-        .from('listing_images')
-        .select('listing_id, url')
-        .in('listing_id', listingIds)
-        .eq('is_primary', true)
-        .order('display_order', { ascending: true });
-      
-      if (!imagesError && images && images.length > 0) {
-        images.forEach(img => {
-          if (!imagesByListingId[img.listing_id]) {
-            imagesByListingId[img.listing_id] = img.url;
-          }
-        });
+      // CAMBIO: Procesar en lotes de 20 IDs para evitar errores de "Invalid array length"
+      for (let i = 0; i < listingIds.length; i += 20) {
+        const batchListingIds = listingIds.slice(i, i + 20);
+        
+        const { data: images, error: imagesError } = await supabase
+          .from('listing_images')
+          .select('listing_id, url')
+          .in('listing_id', batchListingIds) // CAMBIO: Usar el lote actual en lugar de todos
+          .eq('is_primary', true)
+          .order('display_order', { ascending: true });
+        
+        if (!imagesError && images && images.length > 0) {
+          images.forEach(img => {
+            if (!imagesByListingId[img.listing_id]) {
+              imagesByListingId[img.listing_id] = img.url;
+            }
+          });
+        }
       }
     }
     
