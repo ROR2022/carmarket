@@ -137,25 +137,6 @@ export const ReservationService = {
     try {
       const supabase = await createClient();
 
-      /*
-        *,
-        listings:listing_id (
-          id,
-          title,
-          brand,
-          model,
-          year,
-          price,
-          seller_id,
-          seller_name,
-          seller_email,
-          seller_phone
-        ),
-        listing_images:listings!inner (
-          url
-        )
-      */
-
       // Consulta para obtener reservas con joins a listados e imágenes
       const { data, error } = await supabase
         .from('car_reservations')
@@ -172,7 +153,7 @@ export const ReservationService = {
             seller_name,
             seller_email,
             seller_phone,
-            listing_images(
+            listing_images!left(
               url,
               display_order,
               is_primary
@@ -189,15 +170,15 @@ export const ReservationService = {
 
       // Transformar los datos al formato deseado
       return data.map((item) => {
-        const listing = item.listings || {};
-        const image = listing.listing_images && listing.listing_images.length > 0
-    ? listing.listing_images.sort((a: ListingMedia, b: ListingMedia) => {
-        // Priorizar imagen principal, luego por orden de visualización
-        if (a.is_primary && !b.is_primary) return -1;
-        if (!a.is_primary && b.is_primary) return 1;
-        return a.display_order - b.display_order;
-      })[0].url
-    : null;
+        const listing = item.listings;
+        const images = listing.listing_images || [];
+        
+        // Ordenar imágenes: primero la principal, luego por display_order
+        const sortedImages = images.sort((a: ListingMedia, b: ListingMedia) => {
+          if (a.is_primary && !b.is_primary) return -1;
+          if (!a.is_primary && b.is_primary) return 1;
+          return (a.display_order || 0) - (b.display_order || 0);
+        });
 
         return {
           id: item.id,
@@ -209,20 +190,26 @@ export const ReservationService = {
           expiresAt: item.expires_at,
           createdAt: item.created_at,
           updatedAt: item.updated_at,
-          carTitle: listing.title,
-          carBrand: listing.brand,
-          carModel: listing.model,
-          carYear: listing.year,
-          carImage: image,
-          carPrice: listing.price,
-          sellerName: listing.seller_name,
-          sellerEmail: listing.seller_email,
-          sellerPhone: listing.seller_phone,
+          car: {
+            id: listing.id,
+            title: listing.title,
+            brand: listing.brand,
+            model: listing.model,
+            year: listing.year,
+            price: listing.price,
+            imageUrl: sortedImages.length > 0 ? sortedImages[0].url : null,
+            seller: {
+              id: listing.seller_id,
+              name: listing.seller_name,
+              email: listing.seller_email,
+              phone: listing.seller_phone
+            }
+          }
         };
       });
     } catch (error) {
-      console.error('Error fetching user reservations with details:', error);
-      throw new Error(`Error fetching user reservations with details: ${error}`);
+      console.error('Error in getUserReservationsWithCarDetails:', error);
+      return [];
     }
   },
 
