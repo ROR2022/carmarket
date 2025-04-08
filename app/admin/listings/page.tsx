@@ -66,7 +66,8 @@ const statusColors: Record<ListingStatus, string> = {
   'changes_requested': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   'draft': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
   'sold': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'expired': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+  'expired': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+  'reserved': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
 };
 
 export default function AdminListingsPage() {

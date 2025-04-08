@@ -1,9 +1,9 @@
 import { CarCategory, FuelType, Transmission } from '@/types/car';
 import { ListingFormData, ListingStatus, CarListing } from '@/types/listing';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/server';
 
 // Tipos internos para la base de datos
-type DbListing = {
+export type DbListing = {
   id: string;
   title: string;
   brand: string;
@@ -105,7 +105,7 @@ function mapFormDataToDbListing(formData: ListingFormData, userId: string, statu
 export const ListingService = {
   // Crear un nuevo anuncio
   async createListing(formData: ListingFormData, userId: string, status: ListingStatus = 'pending'): Promise<string> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     console.log('Insertando anuncio en la base de datos...');
     // Insertar el anuncio en la base de datos
@@ -131,7 +131,7 @@ export const ListingService = {
   
   // Obtener un anuncio específico por ID
   async getListingById(id: string): Promise<CarListing | null> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Obtener el anuncio
     const { data: listing, error } = await supabase
@@ -166,9 +166,14 @@ export const ListingService = {
     return carListing;
   },
   
+  // Alias for getListingById for better API consistency
+  async getById(id: string): Promise<CarListing | null> {
+    return this.getListingById(id);
+  },
+  
   // Obtener todos los anuncios de un usuario
   async getUserListings(userId: string): Promise<Record<ListingStatus, CarListing[]>> {
-    const supabase = createClient();
+    const supabase = await createClient();
     console.log('iniciando getUserListings userId: ', userId);
     // Obtener todos los anuncios del usuario
     const { data: listings, error } = await supabase
@@ -214,7 +219,8 @@ export const ListingService = {
       draft: [],
       rejected: [],
       approved: [],
-      changes_requested: []
+      changes_requested: [],
+      reserved: []
     };
     
     listings.forEach(listing => {
@@ -230,7 +236,7 @@ export const ListingService = {
   
   // Actualizar un anuncio existente
   async updateListing(id: string, formData: Partial<ListingFormData>, userId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Primero verificar que el anuncio pertenece al usuario
     const { data: listing, error: fetchError } = await supabase
@@ -304,7 +310,7 @@ export const ListingService = {
   
   // Cambiar el estado de un anuncio
   async changeListingStatus(id: string, newStatus: ListingStatus, userId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Verificar propiedad del anuncio
     const { data: listing, error: fetchError } = await supabase
@@ -351,7 +357,7 @@ export const ListingService = {
   
   // Destacar o quitar destacado de un anuncio
   async toggleFeatured(id: string, isFeatured: boolean, userId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Verificar propiedad del anuncio
     const { data: listing, error: fetchError } = await supabase
@@ -399,7 +405,7 @@ export const ListingService = {
   
   // Eliminar un anuncio
   async deleteListing(id: string, userId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Verificar propiedad del anuncio
     const { data: listing, error: fetchError } = await supabase
@@ -429,24 +435,139 @@ export const ListingService = {
   },
   
   // Actualizar contador de vistas
-  async incrementViewCount(id: string): Promise<void> {
-    const supabase = createClient();
+  async incrementViewCount(id: string, userId?: string, ipAddress?: string): Promise<void> {
+    const supabase = await createClient();
     
-    const { error } = await supabase.rpc('increment_listing_view_count', { listing_id: id });
-    
-    if (error) {
-      console.error('Error incrementing view count:', error);
+    // Intentar usar la función de registro de vistas si está disponible
+    try {
+      const { error } = await supabase.rpc('log_listing_view', {
+        p_listing_id: id,
+        p_user_id: userId || null,
+        p_ip_address: ipAddress || null,
+        p_user_agent: typeof window !== 'undefined' ? navigator.userAgent : null,
+        p_referrer: typeof document !== 'undefined' ? document.referrer : null
+      });
+      
+      if (error) {
+        console.error('Error logging view:', error);
+      }
+    } catch (err) {
+      console.error('Error in view tracking:', err);
     }
   },
   
   // Actualizar contador de contactos
   async incrementContactCount(id: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const { error } = await supabase.rpc('increment_listing_contact_count', { listing_id: id });
     
     if (error) {
       console.error('Error incrementing contact count:', error);
     }
+  },
+  
+  // Marcar un listado como reservado
+  async reserveListing(listingId: string): Promise<void> {
+    const supabase = await createClient();
+    
+    const { error } = await supabase
+      .from('listings')
+      .update({ 
+        status: 'reserved',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', listingId)
+      .in('status', ['active', 'approved']); // Solo permitir reservar listados activos o aprobados
+    
+    if (error) {
+      console.error('Error reserving listing:', error);
+      throw new Error(`Error al reservar el listado: ${error.message}`);
+    }
+  },
+  
+  // Liberar un listado reservado (volver a estado activo)
+  async releaseReservation(listingId: string): Promise<void> {
+    const supabase = await createClient();
+    
+    const { error } = await supabase
+      .from('listings')
+      .update({ 
+        status: 'active',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', listingId)
+      .eq('status', 'reserved');
+    
+    if (error) {
+      console.error('Error releasing reservation:', error);
+      throw new Error(`Error al liberar la reserva: ${error.message}`);
+    }
+  },
+  
+  // Verificar si un listado puede ser reservado
+  async canBeReserved(listingId: string): Promise<{ canReserve: boolean; reason?: string }> {
+    const supabase = await createClient();
+    
+    // Verificar estado actual del listado
+    const { data, error } = await supabase
+      .from('listings')
+      .select('status, seller_id')
+      .eq('id', listingId)
+      .single();
+    
+    if (error || !data) {
+      return { canReserve: false, reason: 'El vehículo no está disponible' };
+    }
+    
+    // Solo permitir reservar vehículos activos o aprobados
+    if (data.status !== 'active' && data.status !== 'approved') {
+      return { 
+        canReserve: false, 
+        reason: `El vehículo no está disponible para reserva (estado: ${data.status})` 
+      };
+    }
+    
+    // Verificar si ya existe una reserva activa
+    const { count, error: countError } = await supabase
+      .from('car_reservations')
+      .select('id', { count: 'exact', head: true })
+      .eq('listing_id', listingId)
+      .eq('payment_status', 'approved')
+      .gt('expires_at', new Date().toISOString());
+    
+    if (countError) {
+      console.error('Error checking existing reservations:', countError);
+      return { canReserve: false, reason: 'Error al verificar reservas existentes' };
+    }
+    
+    if ((count || 0) > 0) {
+      return { canReserve: false, reason: 'Este vehículo ya está reservado' };
+    }
+    
+    return { canReserve: true };
+  },
+  
+  // Verificar si un usuario puede reservar un listado específico
+  async canUserReserve(listingId: string, userId: string): Promise<{ canReserve: boolean; reason?: string }> {
+    const supabase = await createClient();
+    
+    // Verificar si el usuario es el vendedor
+    const { data, error } = await supabase
+      .from('listings')
+      .select('seller_id')
+      .eq('id', listingId)
+      .single();
+    
+    if (error || !data) {
+      return { canReserve: false, reason: 'El vehículo no está disponible' };
+    }
+    
+    if (data.seller_id === userId) {
+      return { canReserve: false, reason: 'No puedes reservar tu propio vehículo' };
+    }
+    
+    // Verificar si el listado puede ser reservado
+    return this.canBeReserved(listingId);
   }
 }; 

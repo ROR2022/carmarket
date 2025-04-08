@@ -17,7 +17,9 @@
     "sending": "Enviando...",
     "success": "Éxito",
     "warning": "Advertencia",
-    "info": "Información"
+    "info": "Información",
+    "retry": "Reintentar",
+    "back_to_cars": "Volver a la lista de autos"
   },
   "navbar": {
     "buy": "Comprar",
@@ -41,7 +43,12 @@
     "sellYourCar": "Vende tu Auto",
     "myListings": "Mis Anuncios",
     "myListingsDescription": "Gestiona tus anuncios y controla el estado de tus vehículos",
-    "messages": "Mensajes"
+    "messages": "Mensajes",
+    "profile": "Perfil",
+    "favorites": "Favoritos",
+    "reservations": "Reservas",
+    "account": "Cuenta",
+    "sellerDashboard": "Dashboard de vendedor"
   },
   "homePage": {
     "hero": {
@@ -99,6 +106,13 @@
     "viewAllCars": "Ver Todos los Autos"
   },
   "cars": {
+    "brand": "Marca",
+    "model": "Modelo",
+    "year": "Año",
+    "price": "Precio",
+    "mileage": "Kilometraje",
+    "transmission": "Transmisión",
+    "fuel": "Combustible",
     "pageTitle": "Explora Nuestros Vehículos",
     "pageSubtitle": "Encuentra el auto perfecto para ti entre nuestra selección de vehículos de calidad garantizada",
     "filters": {
@@ -475,6 +489,71 @@
     "to": "Para",
     "unread_singular": "nuevo",
     "unread_plural": "nuevos"
+  },
+  "dashboard": {
+    "title": "Dashboard de Vendedor",
+    "subtitle": "Administre y analice sus anuncios de vehículos",
+    "overview": "Resumen",
+    "overview_description": "Métricas clave de sus anuncios de vehículos",
+    "statistics": "Estadísticas",
+    "performance": "Rendimiento",
+    "trends": "Tendencias",
+    "total_listings": "Total de anuncios",
+    "active_listings": "Anuncios activos",
+    "pending_listings": "Anuncios pendientes",
+    "sold_listings": "Vehículos vendidos",
+    "views": "Vistas",
+    "reservations": "Reservas",
+    "messages": "Mensajes",
+    "favorite_adds": "Veces añadido a favoritos",
+    "performance_metrics": "Métricas de rendimiento",
+    "sales": "Ventas",
+    "view_to_reservation": "Tasa de vistas a reservas",
+    "reservation_to_sale": "Tasa de reservas a ventas",
+    "avg_days_to_sell": "Promedio de días para vender",
+    "avg_price": "Precio promedio",
+    "time_period": "Período de tiempo",
+    "last_7_days": "Últimos 7 días",
+    "last_30_days": "Últimos 30 días",
+    "last_90_days": "Últimos 90 días",
+    "last_year": "Último año",
+    "all_time": "Todo el tiempo",
+    "popular_listings": "Anuncios populares",
+    "listing_name": "Nombre del anuncio", 
+    "brand": "Marca",
+    "model": "Modelo",
+    "price": "Precio",
+    "view_details": "Ver detalles",
+    "view_analytics": "Ver análisis",
+    "loading": "Cargando datos del dashboard...",
+    "error": "Error al cargar los datos del dashboard",
+    "no_data": "No hay datos disponibles para mostrar"
+  },
+  "analytics": {
+    "title": "Análisis del Anuncio",
+    "subtitle": "Estadísticas detalladas para su anuncio",
+    "overview": "Resumen general",
+    "visitors": "Visitantes",
+    "unique_visitors": "Visitantes únicos",
+    "page_views": "Vistas de página",
+    "avg_time": "Tiempo promedio en página",
+    "bounce_rate": "Tasa de rebote",
+    "conversion": "Conversión",
+    "listing_details": "Detalles del anuncio",
+    "listing_id": "ID del anuncio",
+    "created": "Creado el",
+    "last_updated": "Última actualización",
+    "activity": "Actividad del anuncio",
+    "activity_over_time": "Actividad a lo largo del tiempo",
+    "daily": "Diario",
+    "weekly": "Semanal",
+    "monthly": "Mensual",
+    "messages_received": "Mensajes recibidos",
+    "inquiries": "Consultas",
+    "back_to_dashboard": "Volver al dashboard",
+    "loading": "Cargando datos de análisis...",
+    "error": "Error al cargar los datos de análisis",
+    "view_listing": "Ver anuncio"
   },
   "privacy": {
     "title": "Política de Privacidad",
@@ -992,5 +1071,60 @@
     "lastEdited": "Última edición",
     "description": "¿Qué deseas hacer con el formulario guardado?",
     "progress": "Progreso"
+  },
+  "user": {
+    "reservations":{
+      "title": "Mis reservas",
+      "subtitle": "Gestiona tus reservas",
+      "past": "Pasadas",
+      "active": "Activas",
+      "pending": "Pendientes",
+      "expires": "Expira el",
+      "deposit": "Depósito",
+      "price": "Precio",
+      "contact_seller": "Contactar al vendedor",
+      "no_pending_reservations": "No tienes reservas pendientes",
+      "no_pending_reservations_description": "Puedes hacer una reserva en el listado de vehículos",
+      "status": {
+        "pending": "Pendiente",
+        "active": "Activa",
+        "paid": "Pagado",
+        "refunded": "Reembolsado",
+        "failed": "Fallido",
+        "expired": "Expirado",
+        "cancelled": "Cancelado",
+        "completed": "Completado"
+      },
+      "check_payment": "Revisar pago",
+      "view_details": "Ver detalles",
+      "no_reservations": "No tienes reservas",
+      "no_reservations_description": "Puedes hacer una reserva en el listado de vehículos",
+      "no_past_reservations": "No tienes reservas pasadas",
+      "no_past_reservations_description": "Puedes hacer una reserva en el listado de vehículos",
+      "no_active_reservations": "No tienes reservas activas",
+      "no_active_reservations_description": "Puedes hacer una reserva en el listado de vehículos",
+      "browse_cars": "Explorar vehículos",
+      "table": {
+        "car": "Vehículo",
+        "price": "Precio",
+        "status": "Estado",
+        "actions": "Acciones"
+      }
+    },
+    "profile": {
+      "title": "Perfil de usuario",
+      "subtitle": "Gestiona tu perfil de usuario"
+    }
+  },
+  "reservation": {
+    "error_title": "Error al reservar",
+    "view_reservations": "Ver reservas",
+    "view_car_details": "Ver vehículo",
+    "next_steps_title": "Pasos siguientes",
+    "next_steps_description": "Para finalizar la reserva, sigue estos pasos:",
+    "expires_in_48": "Expira en 48 horas",
+    "amount": "Cantidad",
+    "success_title": "Reserva exitosa",
+    "success_description": "Tu reserva ha sido confirmada con éxito. Ahora puedes disfrutar de tu vehículo."
   }
 } 

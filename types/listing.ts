@@ -1,6 +1,6 @@
 import { CarCategory, FuelType, Transmission } from './car';
 
-export type ListingStatus = 'active' | 'pending' | 'approved' | 'sold' | 'expired' | 'draft' | 'rejected' | 'changes_requested';
+export type ListingStatus = 'active' | 'pending' | 'approved' | 'sold' | 'expired' | 'draft' | 'rejected' | 'changes_requested' | 'reserved';
 
 export interface CarListing {
   id: string;

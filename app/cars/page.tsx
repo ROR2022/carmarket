@@ -15,7 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { CatalogService } from '@/services/catalog';
+//import { CatalogService } from '@/services/catalog';
+import axios from 'axios';
 
 export default function CarsPage() {
   const { t } = useTranslation();
@@ -102,7 +103,12 @@ export default function CarsPage() {
   useEffect(() => {
     const loadBrands = async () => {
       try {
-        const brands = await CatalogService.getAvailableBrands();
+        //const brands = await CatalogService.getAvailableBrands();
+        const response = await axios.post('/api/catalog', {
+          methodSelected: 'getAvailableBrands',
+          sentParams: {}
+        });
+        const brands = response.data;
         setAvailableBrands(brands);
       } catch (err) {
         console.error('Error loading brands:', err);
@@ -133,12 +139,23 @@ export default function CarsPage() {
       setError(null);
       
       try {
-        const result = await CatalogService.searchListings(
+        /* const result = await CatalogService.searchListings(
           filters,
           pagination.currentPage,
           pagination.pageSize,
           sortOption
-        );
+        ); */
+        const response = await axios.post('/api/catalog', {
+          methodSelected: 'searchListings',
+          sentParams: {
+            filters: filters,
+            page: pagination.currentPage,
+            pageSize: pagination.pageSize,
+            sort: sortOption
+          }
+        });
+        const result = response.data;
+        
         
         setCars(result.cars);
         

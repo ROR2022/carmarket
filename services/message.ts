@@ -1,6 +1,8 @@
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/server';
 import { ContactMessageData } from '@/components/car/contact-seller-dialog';
 import { CatalogService } from './catalog';
+import { v4 as uuidv4 } from 'uuid';
+
 
 /**
  * Representa un mensaje tal como viene de la base de datos de Supabase
@@ -70,8 +72,8 @@ export const MessageService = {
     sellerId: string,
     data: ContactMessageData,
     senderId: string
-  ): Promise<void> {
-    const supabase = createClient();
+  ): Promise<{ message: string }> {
+    const supabase = await createClient();
     
     // Generar un UUID para el mensaje que también servirá como threadId
     const { data: newMessage, error: insertError } = await supabase
@@ -111,13 +113,15 @@ export const MessageService = {
       // solo lo registramos para solucionar después
       console.error('Error incrementing contact count:', err);
     }
+
+    return { message: 'Mensaje enviado correctamente' };
   },
   
   /**
    * Obtiene los mensajes enviados por un usuario
    */
   async getSentMessages(userId: string): Promise<MessageData[]> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // 1. Obtener todos los mensajes enviados por el usuario
     const { data, error } = await supabase
@@ -219,7 +223,7 @@ export const MessageService = {
    * 2. Respuestas en hilos donde el usuario participó como comprador
    */
   async getReceivedMessages(userId: string): Promise<MessageData[]> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     console.log(`[DEBUG getReceivedMessages] Obteniendo mensajes recibidos para usuario: ${userId}`);
     
@@ -428,7 +432,7 @@ export const MessageService = {
    * Obtiene mensajes archivados
    */
   async getArchivedMessages(userId: string): Promise<MessageData[]> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // 1. Obtener todos los mensajes archivados donde el usuario es el vendedor
     const { data, error } = await supabase
@@ -593,7 +597,7 @@ export const MessageService = {
    * Obtiene el conteo de mensajes no leídos para un usuario
    */
   async getUnreadMessageCount(userId: string): Promise<number> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Contar mensajes recibidos como vendedor que no han sido leídos
     const { count, error } = await supabase
@@ -616,7 +620,7 @@ export const MessageService = {
    * Obtiene los mensajes no leídos recientes
    */
   async getRecentUnreadMessages(userId: string, limit: number = 5): Promise<MessageData[]> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Obtener mensajes no leídos
     const { data, error } = await supabase
@@ -682,7 +686,7 @@ export const MessageService = {
    * Obtiene un mensaje específico por su ID
    */
   async getMessageById(messageId: string): Promise<MessageData | null> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Obtener el mensaje
     const { data, error } = await supabase
@@ -746,7 +750,7 @@ export const MessageService = {
    */
   async getMessageThread(threadId: string, userId: string): Promise<MessageData[]> {
     console.log(`[DEBUG getMessageThread] Obteniendo hilo ${threadId} para usuario ${userId}`);
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // 1. Obtener todos los mensajes del hilo especificado, ordenados por fecha
     const { data, error } = await supabase
@@ -899,7 +903,7 @@ export const MessageService = {
     replyData: { message: string },
     senderId: string
   ): Promise<MessageData> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Obtener el mensaje original
     const { data: originalMessage, error: fetchError } = await supabase
@@ -975,7 +979,7 @@ export const MessageService = {
    * Marca un mensaje como leído
    */
   async markAsRead(messageId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Obtener primero el mensaje para verificación (opcional)
     const { error: fetchError } = await supabase
@@ -1007,7 +1011,7 @@ export const MessageService = {
   async markAsReadBulk(messageIds: string[]): Promise<void> {
     if (!messageIds.length) return;
     
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const { error } = await supabase
       .from('messages')
@@ -1024,7 +1028,7 @@ export const MessageService = {
    * Marca un mensaje como no leído
    */
   async markAsUnread(messageId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const { error } = await supabase
       .rpc('mark_message_as_unread', {
@@ -1041,7 +1045,7 @@ export const MessageService = {
    * Archiva un mensaje
    */
   async archiveMessage(messageId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await  createClient();
     
     // Obtener ID del usuario actual para la política RLS
     const { data: userData } = await supabase.auth.getUser();
@@ -1067,7 +1071,7 @@ export const MessageService = {
    * Desarchiva un mensaje
    */
   async unarchiveMessage(messageId: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Obtener ID del usuario actual para la política RLS
     const { data: userData } = await supabase.auth.getUser();
@@ -1095,7 +1099,7 @@ export const MessageService = {
    * se marca como eliminado virtualmente usando el campo is_deleted.
    */
   async deleteMessage(messageId: string, deleteRelated: boolean = true): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     try {
       console.log(`Intentando eliminar mensaje ${messageId}. deleteRelated=${deleteRelated}`);
@@ -1456,7 +1460,7 @@ export const MessageService = {
     conversations: Record<string, MessageData[]>;
     unreadCount: number;
   }> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     console.log(`[DEBUG getConversations] Obteniendo conversaciones para usuario: ${userId}`);
     
@@ -1749,4 +1753,136 @@ export const MessageService = {
     
     return { conversations, unreadCount };
   },
+
+  /**
+   * Crea un hilo de comunicación para una reserva confirmada
+   * @param sellerId ID del vendedor (dueño del vehículo)
+   * @param buyerId ID del comprador que hizo la reserva
+   * @param listingId ID del vehículo reservado
+   * @param reservationId ID de la reserva
+   * @returns ID del mensaje creado o null si ocurrió un error
+   */
+  async createReservationThread(
+    sellerId: string,
+    buyerId: string,
+    listingId: string,
+    reservationId: string
+  ): Promise<string | null> {
+    try {
+      const supabase = await createClient();
+      
+      // Verificar si ya existe un hilo de comunicación para esta reserva
+      const { data: existingThreads } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('related_id', reservationId);
+      
+      if (existingThreads && existingThreads.length > 0) {
+        console.log('Reservation thread already exists');
+        return existingThreads[0].id;
+      }
+      
+      // Obtener información del vehículo
+      const { data: listing } = await supabase
+        .from('listings')
+        .select('title, year, make, model')
+        .eq('id', listingId)
+        .single();
+      
+      if (!listing) {
+        console.error('Listing not found for reservation thread');
+        return null;
+      }
+      
+      // Generar un ID único para el mensaje
+      const messageId = uuidv4();
+      
+      // Crear el mensaje inicial del sistema
+      const message = {
+        id: messageId,
+        thread_id: messageId, // El ID del mensaje es también el ID del hilo
+        sender_id: 'system', // Mensaje enviado por el sistema
+        receiver_id: sellerId, // Dirigido primariamente al vendedor
+        listing_id: listingId,
+        content: `Se ha confirmado la reserva del vehículo ${listing.make} ${listing.model} ${listing.year}. Este es un canal de comunicación directo entre comprador y vendedor para coordinar los próximos pasos.`,
+        read: false,
+        related_id: reservationId,
+        created_at: new Date().toISOString()
+      };
+      
+      // Insertarlo en la base de datos
+      const { error } = await supabase
+        .from('messages')
+        .insert(message);
+      
+      if (error) {
+        console.error('Error creating reservation thread:', error);
+        return null;
+      }
+      
+      // Crear una notificación para ambas partes sobre el nuevo canal de comunicación
+      await this._createThreadNotification(sellerId, buyerId, listingId, messageId);
+      
+      return messageId;
+    } catch (error) {
+      console.error('Error in createReservationThread:', error);
+      return null;
+    }
+  },
+  
+  /**
+   * Método privado para crear notificaciones sobre un nuevo hilo de comunicación
+   */
+  async _createThreadNotification(
+    sellerId: string,
+    buyerId: string,
+    listingId: string,
+    threadId: string
+  ): Promise<void> {
+    try {
+      const supabase = await createClient();
+      
+      // Obtener información del vehículo
+      const { data: listing } = await supabase
+        .from('listings')
+        .select('title')
+        .eq('id', listingId)
+        .single();
+      
+      if (!listing) return;
+      
+      // Preparar los datos de la notificación
+      const now = new Date().toISOString();
+      
+      // Notificación para el vendedor
+      const sellerNotification = {
+        user_id: sellerId,
+        type: 'message_received',
+        title: 'Nueva comunicación de reserva',
+        message: `Se ha establecido un canal de comunicación para la reserva del vehículo ${listing.title}`,
+        link: `/messages?thread=${threadId}`,
+        related_id: threadId,
+        read: false,
+        created_at: now
+      };
+      
+      // Notificación para el comprador
+      const buyerNotification = {
+        user_id: buyerId,
+        type: 'message_received',
+        title: 'Nueva comunicación de reserva',
+        message: `Se ha establecido un canal de comunicación para la reserva del vehículo ${listing.title}`,
+        link: `/messages?thread=${threadId}`,
+        related_id: threadId,
+        read: false,
+        created_at: now
+      };
+      
+      // Insertar notificaciones
+      await supabase.from('notifications').insert([sellerNotification, buyerNotification]);
+      
+    } catch (error) {
+      console.error('Error creating thread notifications:', error);
+    }
+  }
 };

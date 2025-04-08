@@ -18,8 +18,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { capitalize } from '@/utils/format';
-import { CatalogService } from '@/services/catalog';
-
+//import { CatalogService } from '@/services/catalog';
+import axios from 'axios';
 // Función para obtener un título amigable para cada categoría
 const getCategoryTitle = (category: string): string => {
   switch (category) {
@@ -101,7 +101,12 @@ export default function CategoryPage() {
   useEffect(() => {
     const loadBrands = async () => {
       try {
-        const brands = await CatalogService.getAvailableBrands();
+        //const brands = await CatalogService.getAvailableBrands();
+        const response = await axios.post('/api/catalog', {
+          methodSelected: 'getAvailableBrands',
+          sentParams: {}
+        });
+        const brands = response.data;
         setAvailableBrands(brands);
       } catch (err) {
         console.error('Error loading brands:', err);
@@ -159,12 +164,22 @@ export default function CategoryPage() {
       };
       
       try {
-        const result = await CatalogService.searchListings(
+        /* const result = await CatalogService.searchListings(
           categoryFilters,
           pagination.currentPage,
           pagination.pageSize,
           sortOption
-        );
+        ); */
+        const response = await axios.post('/api/catalog', {
+          methodSelected: 'searchListings',
+          sentParams: {
+            filters: categoryFilters,
+            page: pagination.currentPage,
+            pageSize: pagination.pageSize,
+            sort: sortOption
+          }
+        });
+        const result = response.data;
         
         setCars(result.cars);
         

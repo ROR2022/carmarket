@@ -1,5 +1,6 @@
+"use client"
 import React, { useState } from 'react';
-import { MessageData, MessageService } from '@/services/message';
+import { MessageData } from '@/services/message';
 import { useTranslation } from '@/utils/translation-context';
 import { formatDate, formatRelativeDate } from '@/utils/format';
 import { 
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from '@/components/ui/use-toast';
+import axios from 'axios';
 
 interface ConversationViewProps {
   messages: MessageData[];
@@ -74,11 +76,23 @@ export function ConversationView({
       const lastMessageId = sortedMessages[sortedMessages.length - 1].id;
       
       //aqui es donde se envia el mensaje de respuesta
-      await MessageService.replyToMessage(
+      /* await MessageService.replyToMessage(
         lastMessageId,
         { message: replyText.trim() },
         currentUserId,
-      );
+      ); */
+
+      const response = await axios.post('/api/messages', {
+        methodSelected: 'replyToMessage',
+        sentParams: {
+          originalMessageId: lastMessageId,
+          replyData: { message: replyText.trim() },
+          senderId: currentUserId
+        }
+      });
+
+      console.log(response.data);
+      
 
       // Limpiar el campo de respuesta
       setReplyText('');

@@ -1,0 +1,15 @@
+# www.robotstxt.org/
+
+# Permitir acceso a todos los robots para todas las páginas públicas
+User-agent: *
+Allow: /
+
+# Desactivar acceso a las API y carpetas privadas
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /server/
+Disallow: /internal/
+
+# Sitemap
+Sitemap: https://car-marketplace.vercel.app/sitemap.xml

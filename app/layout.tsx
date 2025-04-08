@@ -6,7 +6,7 @@ import { TranslationProvider } from "@/utils/translation-context"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import './globals.css'
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,7 +27,11 @@ export default function RootLayout({
           <TranslationProvider>
             <Navbar />
             <Toaster />
-            <main className="flex justify-center min-h-screen mt-16 max-w-7xl mx-auto" style={{ maxWidth: '95vw', margin: 'auto' }}>{children}</main>
+            <main 
+            className="flex justify-center min-h-screen mt-16 max-w-7xl mx-auto" 
+            style={{ maxWidth: '95vw', margin: 'auto' }}>
+              {children}
+              </main>
             <Footer />
           </TranslationProvider>
         </ThemeProvider>

@@ -1,386 +1,61 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Fuel,
-  Heart,
-  MapPin,
-  MessageSquare,
-  Gauge,
-  Settings,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { useTranslation } from '@/utils/translation-context';
+//import { CatalogService } from '@/services/catalog';
+import axios from 'axios';
+import CarDetail from '@/components/car/car-detail';
+import { Loader2 } from 'lucide-react';
 import { Car } from '@/types/car';
-import { formatCurrency, formatDate, formatMileage } from '@/utils/format';
-import { useAuth } from '@/utils/auth-hooks';
-import { CatalogService } from '@/services/catalog';
-import { ContactSellerDialog, ContactMessageData } from '@/components/car/contact-seller-dialog';
-import { MessageService } from '@/services/message';
-import { toast } from '@/components/ui/use-toast';
-
-export default function CarDetailPage() {
-  const { t } = useTranslation();
+export default function CarPage() {
   const params = useParams();
-  const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
-
-  const carId = params.id as string;
-
-  // Estados
+  const _router = useRouter();
   const [car, setCar] = useState<Car | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [contactDialogOpen, setContactDialogOpen] = useState(false);
-
-  // Referencia para controlar la carga inicial
-  const initialLoadRef = React.useRef(false);
-
-  // Cargar datos del auto
+  const [error, setError] = useState<unknown | null>(null);
+  
   useEffect(() => {
-    const loadCar = async () => {
-      // Prevenir múltiples cargas
-      if (initialLoadRef.current) return;
-
+    const fetchCar = async () => {
       setLoading(true);
-      setError(null);
-
       try {
-        const data = await CatalogService.getListingById(carId);
-        if (data) {
-          setCar(data);
-          initialLoadRef.current = true;
-        } else {
-          setError('No se encontró el auto solicitado');
-        }
+        const carId = params.id as string;
+        //const carData = await CatalogService.getListingById(carId);
+        const response = await axios.post('/api/catalog', {
+          methodSelected: 'getListingById',
+          sentParams: {
+            listingId: carId
+          }
+        });
+        setCar(response.data);
       } catch (error) {
-        console.error('Error loading car details:', error);
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'Error al cargar los detalles del auto'
-        );
+        console.error("Error loading car:", error);
+        setError(error);
       } finally {
         setLoading(false);
       }
     };
-
-    // Solo cargar si tenemos un ID válido
-    if (carId) {
-      loadCar();
-    }
-  }, [carId, router]);
-
-  // Manejar navegación de imágenes
-  const handlePrevImage = () => {
-    if (!car) return;
-    setCurrentImageIndex((prev) => (prev === 0 ? car.images.length - 1 : prev - 1));
-  };
-
-  const handleNextImage = () => {
-    if (!car) return;
-    setCurrentImageIndex((prev) => (prev === car.images.length - 1 ? 0 : prev + 1));
-  };
-
-  // Manejar toggle de favorito
-  const toggleFavorite = () => {
-    if (!isAuthenticated) {
-      // Redirigir a inicio de sesión si el usuario no está autenticado
-      router.push('/sign-in');
-      return;
-    }
-    setIsFavorite((prev) => !prev);
-    // Aquí implementarías la lógica para guardar en el backend
-  };
-
-  // Manejar contacto con el vendedor
-  const contactSeller = () => {
-    if (!isAuthenticated) {
-      // Redirigir a inicio de sesión si el usuario no está autenticado
-      router.push('/sign-in');
-      return;
-    }
-
-    // Abrir el diálogo de contacto
-    setContactDialogOpen(true);
-  };
-
-  // Manejar el envío del mensaje
-  const handleSendMessage = async (messageData: ContactMessageData) => {
-    if (!car || !user) {
-      throw new Error('Falta información necesaria');
-    }
-
-    try {
-      //aqui se le envia los datos al servicio para que se envie el mensaje
-      await MessageService.sendContactMessage(car.id, car.sellerId, messageData, user.id);
-
-      // Mostrar notificación de éxito
-      toast({
-        title: t('cars.contactData.success_title'),
-        description: t('cars.contactData.success_description'),
-      });
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Mostrar notificación de error
-      toast({
-        title: t('cars.contactData.error_title'),
-        description: t('cars.contactData.error_description'),
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // Renderizado condicional para carga y error
+    
+    fetchCar();
+  }, [params.id]);
+  
   if (loading) {
     return (
-      <div className="container py-10">
-        <div className="flex justify-center items-center h-96">
-          <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-            <p>{t('common.loading_details')}</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
-
+  
   if (error || !car) {
     return (
-      <div className="container py-10">
-        <div className="flex flex-col items-center justify-center h-96">
-          <h2 className="text-2xl font-bold mb-4">{t('common.error')}</h2>
-          <p className="text-muted-foreground mb-6">{error || t('cars.not_found')}</p>
-          <Button asChild>
-            <Link href="/cars">{t('common.back_to_list')}</Link>
-          </Button>
+      <div className="container mx-auto py-8 px-4">
+        <div className="bg-destructive/10 border border-destructive text-destructive p-4 rounded-md">
+          <h2 className="text-lg font-medium">Error</h2>
+          <p>No se pudo cargar la información del vehículo. Intenta nuevamente más tarde.</p>
         </div>
       </div>
     );
   }
-
-  return (
-    <div className="container py-10">
-      {/* Diálogo de contacto */}
-      <ContactSellerDialog
-        car={car}
-        isOpen={contactDialogOpen}
-        onOpenChange={setContactDialogOpen}
-        onSendMessage={handleSendMessage}
-      />
-
-      {/* Breadcrumb y botón de volver */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Link href="/cars" className="hover:text-foreground">
-              {t('navbar.cars')}
-            </Link>
-            <span className="mx-2">/</span>
-            <Link href={`/cars/category/${car.category}`} className="hover:text-foreground">
-              {t(`categories.${car.category}`)}
-            </Link>
-            <span className="mx-2">/</span>
-            <span className="text-foreground font-medium">{car.title}</span>
-          </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/cars">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {t('common.back_to_list')}
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Contenido principal en dos columnas */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Columna izquierda: imágenes y detalles */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Galería de imágenes */}
-          <div className="relative rounded-xl overflow-hidden">
-            <div className="aspect-[16/9] relative">
-              {car.images && car.images.length > 0 ? (
-                <Image
-                  src={car.images[currentImageIndex]}
-                  alt={car.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover"
-                  priority
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-muted">
-                  <p className="text-muted-foreground">No hay imágenes disponibles</p>
-                </div>
-              )}
-            </div>
-
-            {/* Controles de navegación (solo si hay más de una imagen) */}
-            {car.images && car.images.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 text-white hover:bg-black/50 rounded-full"
-                  onClick={handlePrevImage}
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 text-white hover:bg-black/50 rounded-full"
-                  onClick={handleNextImage}
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </Button>
-
-                {/* Indicador de imágenes */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                  <div className="bg-black/30 text-white px-3 py-1 rounded-full text-sm">
-                    {currentImageIndex + 1} / {car.images.length}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Información principal */}
-          <div>
-            <h1 className="text-3xl font-bold">{car.title}</h1>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Badge variant="outline" className="flex items-center">
-                <MapPin className="mr-1 h-3 w-3" />
-                {car.location}
-              </Badge>
-              <Badge variant="outline" className="flex items-center">
-                <Calendar className="mr-1 h-3 w-3" />
-                {car.year}
-              </Badge>
-              <Badge variant="outline" className="flex items-center">
-                <Gauge className="mr-1 h-3 w-3" />
-                {formatMileage(car.mileage)}
-              </Badge>
-              <Badge variant="outline" className="flex items-center">
-                <Fuel className="mr-1 h-3 w-3" />
-                {car.fuelType}
-              </Badge>
-              <Badge variant="outline" className="flex items-center">
-                <Settings className="mr-1 h-3 w-3" />
-                {car.transmission}
-              </Badge>
-            </div>
-
-            <Separator className="my-6" />
-
-            {/* Pestañas de detalles */}
-            <Tabs defaultValue="description">
-              <TabsList className="mb-4">
-                <TabsTrigger value="description">{t('cars.description')}</TabsTrigger>
-                <TabsTrigger value="features">{t('cars.features')}</TabsTrigger>
-              </TabsList>
-              <TabsContent value="description" className="space-y-4">
-                <div className="text-muted-foreground">
-                  <p>{car.description}</p>
-                </div>
-              </TabsContent>
-              <TabsContent value="features">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {car.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-primary"></div>
-                      <span>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-
-        {/* Columna derecha: precio, acciones y datos del vendedor */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-24 space-y-6">
-            {/* Card de precio y acciones */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-3xl font-bold">{formatCurrency(car.price)}</CardTitle>
-                <CardDescription>{t('cars.final_price')}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Button onClick={contactSeller} className="w-full">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    {t('cars.contact')}
-                  </Button>
-                  <Button
-                    variant={isFavorite ? 'default' : 'secondary'}
-                    onClick={toggleFavorite}
-                    className="w-full"
-                  >
-                    <Heart className={`mr-2 h-4 w-4 ${isFavorite ? '' : ''}`} />
-                    {isFavorite ? t('cars.saved') : t('cars.save')}
-                  </Button>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  <p>
-                    {t('cars.vehicle_id')}: {car.id}
-                  </p>
-                  <p>
-                    {t('cars.last_update')}: {formatDate(car.updatedAt)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Card del vendedor */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('cars.seller_info')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <div className="relative h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="font-bold text-primary">S</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">
-                      {t('cars.seller_id')}: {car.sellerId}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{t('cars.member_since')} 2022</p>
-                  </div>
-                </div>
-                <Button variant="outline" className="w-full" onClick={contactSeller}>
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  {t('cars.send_message')}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Aviso legal */}
-            <div className="text-xs text-muted-foreground">
-              <p>
-                <strong>{t('cars.disclaimer.title')}:</strong> {t('cars.disclaimer.text')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  
+  return <CarDetail car={car} />;
 }

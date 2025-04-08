@@ -38,8 +38,9 @@ import { CarListing, ListingStatus } from '@/types/listing';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from '@/components/ui/use-toast';
-import { ListingService } from '@/services/listings';
+//import { ListingService } from '@/services/listings';
 import { FaCarSide } from 'react-icons/fa';
+import axios from 'axios';
 
 // Formatear fecha relativa
 const formatRelativeDate = (dateString: string) => {
@@ -68,6 +69,7 @@ export default function MyListingsPage() {
     rejected: [],
     approved: [],
     changes_requested: [],
+    reserved: [],
   });
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -105,12 +107,19 @@ export default function MyListingsPage() {
       }, 15000); // 15 segundos de timeout
       
       // Agregar control de errores para la llamada a getUserListings
-      if (!ListingService || typeof ListingService.getUserListings !== 'function') {
+      /* if (!ListingService || typeof ListingService.getUserListings !== 'function') {
         throw new Error('ListingService o getUserListings no disponible');
-      }
+      } */
       
       console.log('Llamando a ListingService.getUserListings...');
-      const userListings = await ListingService.getUserListings(user.id);
+      //const userListings = await ListingService.getUserListings(user.id);
+      const response = await axios.post('/api/listings', {
+        methodSelected: 'getListings',
+        sentParams: {
+          userId: user.id
+        }
+      });
+      const userListings = response.data;
       console.log('Anuncios cargados exitosamente:', Object.keys(userListings).map(k => `${k}: ${userListings[k as ListingStatus].length}`));
       
       // Limpiar el timeout ya que la carga fue exitosa
@@ -195,8 +204,14 @@ export default function MyListingsPage() {
         description: 'Eliminando anuncio...',
       });
       
-      await ListingService.deleteListing(selectedListingId, user.id);
-      
+      //await ListingService.deleteListing(selectedListingId, user.id);
+      await axios.post('/api/listings', {
+        methodSelected: 'deleteListing',
+        sentParams: {
+          listingId: selectedListingId,
+          userId: user.id
+        }
+      });
       // Actualizar el estado local usando un callback para asegurar el estado más reciente
       setListings(prevListings => {
         const updatedListings = { ...prevListings };
@@ -250,6 +265,7 @@ export default function MyListingsPage() {
           approved: 'aprobado',
           rejected: 'rechazado',
           changes_requested: 'marcado para revisión',
+          reserved: 'marcado como reservado',
         }[newStatus] || newStatus;
       
       // Mostrar indicador de carga
@@ -259,7 +275,15 @@ export default function MyListingsPage() {
       });
       
       // Llamar al servicio para cambiar el estado
-      await ListingService.changeListingStatus(listingId, newStatus, user.id);
+      //await ListingService.changeListingStatus(listingId, newStatus, user.id);
+      await axios.post('/api/listings', {
+        methodSelected: 'changeListingStatus',
+        sentParams: {
+          listingId: listingId,
+          newStatus: newStatus,
+          userId: user.id
+        }
+      });
       
       // Actualizar el estado local usando un callback para asegurar el estado más reciente
       setListings(prevListings => {
@@ -362,7 +386,15 @@ export default function MyListingsPage() {
       });
       
       // Llamar al servicio para cambiar el estado destacado
-      await ListingService.toggleFeatured(listingId, newFeaturedStatus, user.id);
+      //await ListingService.toggleFeatured(listingId, newFeaturedStatus, user.id);
+      await axios.post('/api/listings', {
+        methodSelected: 'toggleFeatured',
+        sentParams: {
+          listingId: listingId,
+          newFeaturedStatus: newFeaturedStatus,
+          userId: user.id
+        }
+      });
       
       // Actualizar el estado local
       setListings(prevListings => {

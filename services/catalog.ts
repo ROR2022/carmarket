@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/server';
 import { Car, CarFilters, CarListResponse, PaginationInfo, SortOption } from '@/types/car';
 import { CarCategory, FuelType, Transmission } from '@/types/car';
 import { CarListing, ListingStatus } from '@/types/listing';
@@ -35,7 +35,7 @@ export const CatalogService = {
     pageSize: number = 12,
     sort: SortOption = 'created_desc'
   ): Promise<CarListResponse> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const offset = (page - 1) * pageSize;
     
     // Construir la consulta base para anuncios activos y aprobados
@@ -226,7 +226,7 @@ export const CatalogService = {
   
   // Obtener anuncios destacados
   async getFeaturedListings(limit: number = 6): Promise<Car[]> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('listings')
@@ -302,7 +302,7 @@ export const CatalogService = {
   
   // Obtener marcas disponibles para filtros
   async getAvailableBrands(): Promise<string[]> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('listings')
@@ -329,7 +329,7 @@ export const CatalogService = {
   
   // Incrementar contador de vistas para un anuncio
   async incrementViewCount(id: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const { error } = await supabase.rpc('increment_listing_view_count', { listing_id: id });
     
@@ -340,7 +340,7 @@ export const CatalogService = {
   
   // Incrementar contador de contactos para un anuncio
   async incrementContactCount(id: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const { error } = await supabase.rpc('increment_listing_contact_count', { listing_id: id });
     
@@ -351,7 +351,7 @@ export const CatalogService = {
   
   // Obtener detalle de un anuncio específico
   async getListingById(id: string): Promise<Car | null> {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Obtener el anuncio
     const { data: listing, error } = await supabase

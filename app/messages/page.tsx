@@ -15,13 +15,14 @@ import {
 } from 'lucide-react';
 import { useTranslation } from '@/utils/translation-context';
 import { useAuth } from '@/utils/auth-hooks';
-import { MessageData, MessageService } from '@/services/message';
+import { MessageData } from '@/services/message';
 //import { formatRelativeDate } from '@/utils/format';
 import { MessageList } from '@/components/message/message-list';
 import { EmptyState } from '@/components/message/empty-state';
 import { ConversationList } from '@/components/message/conversation-list';
 import { ConversationView } from '@/components/message/conversation-view';
 import { toast } from '@/components/ui/use-toast';
+import axios from 'axios';
 
 export default function MessagesPage() {
   const { t } = useTranslation();
@@ -55,7 +56,110 @@ export default function MessagesPage() {
       router.push('/sign-in?redirect=/messages');
     }
   }, [isAuthenticated, authLoading, router]);
+
+  const getReceivedMessages = async (userId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'getReceivedMessages',
+      sentParams: {
+        userId: userId
+      }
+    });
+    return response.data;
+  }
+
+  const getSentMessages = async (userId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'getSentMessages',
+      sentParams: {
+        userId: userId
+      }
+    });
+    return response.data;
+  }
   
+  const getArchivedMessages = async (userId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'getArchivedMessages',
+      sentParams: {
+        userId: userId
+      }
+    });
+    return response.data;
+  }
+
+  const getUnreadMessageCount = async (userId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'getUnreadMessageCount',
+      sentParams: {
+        userId: userId
+      }
+    });
+    return response.data;
+  }
+
+  const getConversations = async (userId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'getConversations',
+      sentParams: {
+        userId: userId
+      }
+    });
+    return response.data;
+  }
+
+  const archiveMessage = async (messageId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'archiveMessage',
+      sentParams: {
+        messageId: messageId
+      }
+    });
+    return response.data;
+  }
+
+  const deleteMessage = async (messageId: string, deleteRelated?: boolean) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'deleteMessage',
+      sentParams: {
+        messageId: messageId,
+        deleteRelated: deleteRelated
+      }
+    });
+    return response.data;
+  }
+
+  const markAsRead = async (messageId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'markAsRead',
+      sentParams: {
+        messageId: messageId
+      }
+    });
+    return response.data;
+  }
+
+  const markAsUnread = async (messageId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'markAsUnread',
+      sentParams: {
+        messageId: messageId
+      }
+    });
+    return response.data;
+  }
+
+  const unarchiveMessage = async (messageId: string) => {
+    const response = await axios.post('/api/messages', {
+      methodSelected: 'unarchiveMessage',
+      sentParams: {
+        messageId: messageId
+      }
+    });
+    return response.data;
+  }
+
+  
+
   // Cargar mensajes cuando el usuario esté disponible y no esté cargando
   useEffect(() => {
     const loadMessages = async () => {
@@ -67,16 +171,22 @@ export default function MessagesPage() {
         return;
       }
       
+      /**
+       * MessageService.getReceivedMessages(user.id),
+            MessageService.getSentMessages(user.id),
+            MessageService.getArchivedMessages(user.id),
+            MessageService.getUnreadMessageCount(user.id)
+       */
       setLoading(true);
       try {
         console.log('Cargando mensajes para el usuario:', user.id);
         if (viewMode === 'traditional') {
           // Cargar contenido con Promise.all para optimizar
           const [received, sent, archived, count] = await Promise.all([
-            MessageService.getReceivedMessages(user.id),
-            MessageService.getSentMessages(user.id),
-            MessageService.getArchivedMessages(user.id),
-            MessageService.getUnreadMessageCount(user.id)
+            getReceivedMessages(user.id),
+            getSentMessages(user.id),
+            getArchivedMessages(user.id),
+            getUnreadMessageCount(user.id)
           ]);
           
           setReceivedMessages(received);
@@ -85,7 +195,7 @@ export default function MessagesPage() {
           setUnreadCount(count);
         } else {
           // Carga de conversaciones agrupadas
-          const { conversations: convos, unreadCount: unread } = await MessageService.getConversations(user.id);
+          const { conversations: convos, unreadCount: unread } = await getConversations(user.id);
           setConversations(convos);
           setUnreadCount(unread);
         }
@@ -135,7 +245,7 @@ export default function MessagesPage() {
       // Archivar todos los mensajes de la conversación
       for (const message of conversations[threadId]) {
         if (message.sellerId === user.id && !message.isArchived) {
-          await MessageService.archiveMessage(message.id);
+          await archiveMessage(message.id);
         }
       }
       
@@ -171,7 +281,7 @@ export default function MessagesPage() {
     try {
       // Eliminar todos los mensajes de la conversación
       for (const message of conversations[threadId]) {
-        await MessageService.deleteMessage(message.id);
+        await deleteMessage(message.id);
       }
       
       // Actualizar la UI
@@ -205,7 +315,7 @@ export default function MessagesPage() {
     try {
       setProcessingIds(prev => [...prev, messageId]);
       
-      await MessageService.markAsRead(messageId);
+      await markAsRead(messageId);
       
       // Actualizar la lista de mensajes recibidos
       setReceivedMessages(prev => 
@@ -234,7 +344,7 @@ export default function MessagesPage() {
     try {
       setProcessingIds(prev => [...prev, messageId]);
       
-      await MessageService.markAsUnread(messageId);
+      await markAsUnread(messageId);
       
       // Actualizar la lista de mensajes
       setReceivedMessages(prev => 
@@ -268,7 +378,7 @@ export default function MessagesPage() {
     try {
       setProcessingIds(prev => [...prev, messageId]);
       
-      await MessageService.archiveMessage(messageId);
+      await archiveMessage(messageId);
       
       // Mover el mensaje de recibidos a archivados
       const messageToArchive = receivedMessages.find(msg => msg.id === messageId);
@@ -297,7 +407,7 @@ export default function MessagesPage() {
     try {
       setProcessingIds(prev => [...prev, messageId]);
       
-      await MessageService.unarchiveMessage(messageId);
+      await unarchiveMessage(messageId);
       
       // Mover el mensaje de archivados a recibidos
       const messageToUnarchive = archivedMessages.find(msg => msg.id === messageId);
@@ -338,7 +448,7 @@ export default function MessagesPage() {
       
       try {
         // Intentar primero sin eliminar mensajes relacionados
-        await MessageService.deleteMessage(messageId, false);
+        await deleteMessage(messageId, false);
       } catch (error: unknown) {
         // Si falla debido a dependencias, preguntar si quiere eliminar todo
         if (error instanceof Error && 
@@ -356,7 +466,7 @@ export default function MessagesPage() {
           }
           
           // Intentar de nuevo con deleteRelated=true
-          await MessageService.deleteMessage(messageId, true);
+          await deleteMessage(messageId, true);
         } else {
           // Si es otro tipo de error, propagarlo
           throw error;
